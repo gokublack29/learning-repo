@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Engineering Masterclass Learning Hub - TriageMate &amp; Tamil Tokenizer</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top Global Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3.5 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-rose-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20 text-lg">
+          λ
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">Engineering Masterclass Hub</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono">2 Production Repos</span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Self-paced deep architectural breakdowns, interactive simulators &amp; interview dossiers
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Project Jump Buttons -->
+      <div class="flex items-center gap-2">
+        <a href="#triagemate-section" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600/20 text-indigo-300 hover:bg-indigo-600/30 border border-indigo-500/30 transition flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+          TriageMate
+        </a>
+        <a href="#tamil-tokenizer-section" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600/20 text-emerald-300 hover:bg-emerald-600/30 border border-emerald-500/30 transition flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          Tamil Tokenizer
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="max-w-7xl w-full mx-auto px-4 pt-10 pb-6">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 border border-slate-800 p-8 sm:p-10 shadow-2xl">
+      <div class="absolute -right-20 -top-20 w-80 h-80 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none"></div>
+      <div class="absolute -left-20 -bottom-20 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+      
+      <div class="relative z-10 max-w-3xl space-y-4">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-800/80 border border-slate-700 text-xs font-mono text-indigo-300">
+          <span>Interactive Learning System</span>
+          <span class="text-slate-500">•</span>
+          <span>Dual Architecture Tracks</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
+          Master Modern AI Systems &amp; Low-Level Compilers
+        </h2>
+        <p class="text-sm sm:text-base text-slate-300 leading-relaxed">
+          Switch between two comprehensive, bottom-up engineering courses. Each track includes recursive commit archaeology, annotated source walkthroughs, interactive mathematical visualizers, and staff-level interview dossiers.
+        </p>
+      </div>
+
+      <!-- Quick Switcher Controls -->
+      <div class="mt-8 flex flex-wrap gap-3">
+        <button type="button" onclick="filterTrack('all')" id="tab-btn-all" class="track-tab px-4 py-2 rounded-xl text-xs font-semibold transition bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
+          All Courses (2)
+        </button>
+        <button type="button" onclick="filterTrack('triagemate')" id="tab-btn-triagemate" class="track-tab px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+          TriageMate Track (AI Security &amp; Hybrid SSM)
+        </button>
+        <button type="button" onclick="filterTrack('tamil-tokenizer')" id="tab-btn-tamil-tokenizer" class="track-tab px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-800 text-slate-300 hover:bg-slate-700">
+          Tamil Tokenizer Track (Rust &amp; Systems NLP)
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Course Grid -->
+  <main class="max-w-7xl w-full mx-auto px-4 pb-16 space-y-12 flex-1">
+
+    <!-- PROJECT 1: TRIAGEMATE -->
+    <section id="triagemate-section" class="course-card rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-xl transition duration-300 hover:border-indigo-500/40">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
+        <div class="space-y-3 max-w-3xl">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+              Track 01 • Application Security &amp; LLMs
+            </span>
+            <span class="text-xs text-slate-400 font-mono">Repo: barryallen16/triagemate</span>
+          </div>
+          <h3 class="text-2xl sm:text-3xl font-bold text-white">
+            TriageMate: Automated SAST Noise Reduction &amp; Hybrid SSM Triage
+          </h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            Eliminate alert fatigue in enterprise Java security scanning. Learn how Semgrep taint flows, AST sink extraction, and fine-tuned LiquidAI d1-3B State-Space Models filter out 80%+ false positive alerts in 12-14 ms per alert.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
+          <a href="triagemate/index.html" class="px-5 py-3 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white text-center shadow-lg shadow-indigo-600/25 transition">
+            Launch Interactive Masterclass →
+          </a>
+          <a href="triagemate/lesson_07_interview_prep_guide.html" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 text-center border border-slate-700 transition">
+            Interview Prep (28 Q&amp;As)
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Audited Commits</div>
+          <div class="text-xl font-bold text-white font-mono mt-1">54 Commits</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Recursive time machine</div>
+        </div>
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Inference Latency</div>
+          <div class="text-xl font-bold text-emerald-400 font-mono mt-1">12-14 ms</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Nvidia T4 GPU / 6.25 GiB</div>
+        </div>
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Fix Hunk AUC</div>
+          <div class="text-xl font-bold text-indigo-400 font-mono mt-1">0.8372</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">LiquidAI d1-3B QLoRA</div>
+        </div>
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Curriculum Modules</div>
+          <div class="text-xl font-bold text-amber-400 font-mono mt-1">7 Deep Dives</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Interactive code &amp; charts</div>
+        </div>
+      </div>
+
+      <!-- Syllabus / Chapters -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">TriageMate Curriculum</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <a href="triagemate/lesson_01_foundations_zero_to_one.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">1</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Foundations: Zero to One</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Semgrep, taint flows, AST sinks &amp; dual package layout</div>
+            </div>
+          </a>
+          <a href="triagemate/lesson_02_recursive_54_commits.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">2</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Recursive 54-Commit Archaeology</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Reverse time machine from commit #54 back to #01</div>
+            </div>
+          </a>
+          <a href="triagemate/lesson_03_all_entry_points.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">3</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Every Entry Point &amp; File Tree</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">All 6 CLI commands and call-graph targets</div>
+            </div>
+          </a>
+          <a href="triagemate/lesson_04_end_to_end_data_flows.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">4</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Interactive Data-Flow Simulator</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Annotated walkthrough of sink_finder, engine &amp; decision</div>
+            </div>
+          </a>
+          <a href="triagemate/lesson_05_decisions_and_consequences.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">5</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Decisions &amp; Architectural Pivots</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">The 6 critical trade-offs and empirical consequences</div>
+            </div>
+          </a>
+          <a href="triagemate/lesson_06_evaluation_gates_and_math.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-indigo-500/20 text-indigo-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">6</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Evaluation Gates, Math &amp; Leaderboard</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">P@90R, ECE, Within-Rule AUC &amp; benchmark metrics</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROJECT 2: TAMIL TOKENIZER -->
+    <section id="tamil-tokenizer-section" class="course-card rounded-3xl bg-slate-900 border border-slate-800 p-6 sm:p-8 space-y-6 shadow-xl transition duration-300 hover:border-emerald-500/40">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-slate-800/80">
+        <div class="space-y-3 max-w-3xl">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              Track 02 • Systems Programming &amp; Low-Level NLP
+            </span>
+            <span class="text-xs text-slate-400 font-mono">Repo: barryallen16/tamil-tokenizer</span>
+          </div>
+          <h3 class="text-2xl sm:text-3xl font-bold text-white">
+            Tamil Tokenizer: High-Performance Rust BPE &amp; Orthography Engine
+          </h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            Construct a Byte Pair Encoding (BPE) tokenizer from the ground up in Rust. Learn why standard subword tokenizers bloat Indic vocabularies, how conjunct stem extraction saves token budgets, and how fast priority-queue merges execute without allocations.
+          </p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row lg:flex-col gap-2 shrink-0">
+          <a href="tamil-tokenizer/index.html" class="px-5 py-3 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white text-center shadow-lg shadow-emerald-600/25 transition">
+            Launch Learning Path (13 Steps) →
+          </a>
+          <a href="tamil-tokenizer/interview/dossier.html" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 text-center border border-slate-700 transition">
+            Staff Interview Dossier
+          </a>
+        </div>
+      </div>
+
+      <!-- Quick Metrics Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Implementation</div>
+          <div class="text-xl font-bold text-emerald-400 font-mono mt-1">Pure Rust</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Zero-allocation inference</div>
+        </div>
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Orthography Stems</div>
+          <div class="text-xl font-bold text-white font-mono mt-1">528 Stems</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Abugida conjunct clustering</div>
+        </div>
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Step-by-Step Path</div>
+          <div class="text-xl font-bold text-indigo-400 font-mono mt-1">12 Lessons</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Zero-to-systems walkthrough</div>
+        </div>
+        <div class="bg-slate-950/70 border border-slate-800/80 p-3.5 rounded-2xl">
+          <div class="text-xs text-slate-400 font-medium">Reference Tools</div>
+          <div class="text-xl font-bold text-amber-400 font-mono mt-1">HF + Cheatsheet</div>
+          <div class="text-[11px] text-slate-500 mt-0.5">Tokenizer JSON export</div>
+        </div>
+      </div>
+
+      <!-- Syllabus / Highlights -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-semibold">Tamil Tokenizer Curriculum Highlights</h4>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          <a href="tamil-tokenizer/lessons/0001-entry-points-and-data-flow.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">1</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Entry Points and Data Flow</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">How text becomes token IDs and back</div>
+            </div>
+          </a>
+          <a href="tamil-tokenizer/lessons/0002-tamil-orthography-and-conjunct-stems.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">2</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Tamil Orthography &amp; Conjuncts</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">The abugida, pulli, and base cluster tokens</div>
+            </div>
+          </a>
+          <a href="tamil-tokenizer/lessons/0004-pretokenization-and-the-unicode-regex.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">4</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Pretokenization &amp; Unicode Regex</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Splitting scripts before merging byte pairs</div>
+            </div>
+          </a>
+          <a href="tamil-tokenizer/lessons/0007-bpe-training-engine-and-pair-packing.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">7</span>
+            <div>
+              <div class="text-xs font-semibold text-white">BPE Training Engine &amp; Packing</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Frequency counting, symbol merging &amp; speed</div>
+            </div>
+          </a>
+          <a href="tamil-tokenizer/lessons/0011-rust-systems-language-mental-model.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">11</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Rust Systems Mental Model</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">Borrow checker, memory layouts &amp; idioms</div>
+            </div>
+          </a>
+          <a href="tamil-tokenizer/reference/architecture-cheat-sheet.html" class="p-3 rounded-xl bg-slate-950/50 hover:bg-slate-800/70 border border-slate-800 hover:border-slate-700 transition flex items-start gap-3">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0">★</span>
+            <div>
+              <div class="text-xs font-semibold text-white">Architecture Cheat Sheet</div>
+              <div class="text-[11px] text-slate-400 mt-0.5">One-page reference of modules, types &amp; flags</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Global Footer -->
+  <footer class="border-t border-slate-800 bg-slate-900/60 py-6 px-4 text-center text-xs text-slate-500">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div>
+        Hosted on GitHub Pages • Account: <code class="font-mono text-slate-400">gokublack29</code>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="https://github.com/gokublack29/learning-repo" target="_blank" rel="noopener noreferrer" class="hover:text-slate-300 underline font-mono">
+          gokublack29/learning-repo
+        </a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function filterTrack(track) {
+      const triagemate = document.getElementById('triagemate-section');
+      const tamil = document.getElementById('tamil-tokenizer-section');
+      
+      const btnAll = document.getElementById('tab-btn-all');
+      const btnTriage = document.getElementById('tab-btn-triagemate');
+      const btnTamil = document.getElementById('tab-btn-tamil-tokenizer');
+
+      const activeClass = 'track-tab px-4 py-2 rounded-xl text-xs font-semibold transition bg-indigo-600 text-white shadow-lg shadow-indigo-600/20';
+      const inactiveClass = 'track-tab px-4 py-2 rounded-xl text-xs font-semibold transition bg-slate-800 text-slate-300 hover:bg-slate-700';
+
+      btnAll.className = inactiveClass;
+      btnTriage.className = inactiveClass;
+      btnTamil.className = inactiveClass;
+
+      if (track === 'triagemate') {
+        triagemate.style.display = 'block';
+        tamil.style.display = 'none';
+        btnTriage.className = activeClass;
+      } else if (track === 'tamil-tokenizer') {
+        triagemate.style.display = 'none';
+        tamil.style.display = 'block';
+        btnTamil.className = activeClass;
+      } else {
+        triagemate.style.display = 'block';
+        tamil.style.display = 'block';
+        btnAll.className = activeClass;
+      }
+    }
+  </script>
+</body>
+</html>
