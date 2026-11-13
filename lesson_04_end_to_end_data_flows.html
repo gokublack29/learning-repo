@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 4: Data Flows & Code — TriageMate Deep Textbook</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #020617; color: #f1f5f9; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .ann-line { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(30,41,59,0.7); align-items: start; }
+    .ann-line:hover { background: rgba(30,41,59,0.45); }
+    .ln { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; user-select: none; padding-top: 2px; }
+    .code-txt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .ann-note { font-size: 11.5px; color: #94a3b8; margin-top: 3px; line-height: 1.45; }
+    .ann-note strong { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+  <nav class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sticky top-3 z-30 backdrop-blur">
+    <div class="font-bold text-white text-sm">
+      TriageMate Deep Course • <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">barryallen16/triagemate</a>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <a href="index.html" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold">Interactive Hub</a>
+      <a href="lesson_01_foundations_zero_to_one.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Foundations</a>
+      <a href="lesson_02_recursive_54_commits.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. All 54 Commits</a>
+      <a href="lesson_03_all_entry_points.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. Entry Points</a>
+      <a href="lesson_04_end_to_end_data_flows.html" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold">4. Data Flows &amp; Code</a>
+      <a href="lesson_05_decisions_and_consequences.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Pivots &amp; Consequences</a>
+      <a href="lesson_06_evaluation_gates_and_math.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Math &amp; Leaderboard</a>
+      <a href="lesson_07_interview_prep_guide.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Interview Prep</a>
+    </div>
+  </nav>
+
+  <header class="space-y-3">
+    <div class="text-xs font-mono text-indigo-400 uppercase tracking-wider">Lesson 04 • Line-by-Line Annotated Source Code Walkthrough</div>
+    <h1 class="text-3xl font-extrabold text-white">Inside the Core Modules: Every Line Explained</h1>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Study these line-by-line annotated breakdowns of <code>d1_triage/sink_finder.py</code>, <code>d1_triage/engine.py</code>, and <code>triage/decision.py</code>. In an interview, being able to walk through how data transforms from raw Semgrep JSON to <code>P(TP)</code> is what separates engineers who built a system from those who just read a README.
+    </p>
+  </header>
+
+  <section class="space-y-6">
+    
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+      <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <span class="font-mono text-xs font-bold text-indigo-300">d1_triage/sink_finder.py</span>
+        <span class="text-xs text-slate-400">Regex Sink Localization &amp; Statement Grounding</span>
+      </div>
+      <div><div class="ann-line"><div class="ln">1</div><div><div class="code-txt">SINK_PATTERNS = {</div><div class="ann-note">Dictionary mapping Semgrep rule-ID substrings to lists of Java sink regexes.</div></div></div><div class="ann-line"><div class="ln">2</div><div><div class="code-txt">    &quot;path-traversal&quot;: [r&quot;Paths\.get\(&quot;, r&quot;new\s+File\(&quot;, r&quot;new\s+FileInputStream\(&quot;, r&quot;new\s+FileReader\(&quot;],</div><div class="ann-note">Matches Java filesystem APIs where untrusted filenames cause CWE-22.</div></div></div><div class="ann-line"><div class="ln">3</div><div><div class="code-txt">    &quot;formatted-sql-string&quot;: [r&quot;executeQuery\(&quot;, r&quot;executeUpdate\(&quot;, r&quot;createNativeQuery\(&quot;, r&quot;rawQuery\(&quot;],</div><div class="ann-note">Matches raw SQL execution sinks (CWE-89) rather than PreparedStatement.</div></div></div><div class="ann-line"><div class="ln">4</div><div><div class="code-txt">    &quot;object-deserialization&quot;: [r&quot;readObject\(&quot;, r&quot;XMLDecoder\(&quot;, r&quot;ObjectMapper\.readValue\(&quot;],</div><div class="ann-note">Matches unsafe Java deserialization sinks (CWE-502).</div></div></div><div class="ann-line"><div class="ln">5</div><div><div class="code-txt">    &quot;documentbuilderfactory&quot;: [r&quot;newDocumentBuilder\(&quot;],</div><div class="ann-note">Matches XML parser instantiation for XXE (CWE-611).</div></div></div><div class="ann-line"><div class="ln">6</div><div><div class="code-txt">}</div></div></div><div class="ann-line"><div class="ln">7</div><div><div class="code-txt">def find_sink_line(code_snippet: str, rule_id: str, reported_line: int = 0) -&gt; Tuple[int, str]:</div><div class="ann-note">Entry function resolving the 0-based index of the vulnerable sink inside code_snippet.</div></div></div><div class="ann-line"><div class="ln">8</div><div><div class="code-txt">    lines = code_snippet.splitlines()</div><div class="ann-note">Splits the extracted Java window into individual lines.</div></div></div><div class="ann-line"><div class="ln">9</div><div><div class="code-txt">    if not lines: return (0, &quot;&quot;)</div><div class="ann-note">Guard against empty snippets.</div></div></div><div class="ann-line"><div class="ln">10</div><div><div class="code-txt">    for rule_key, patterns in SINK_PATTERNS.items():</div><div class="ann-note">Iterates over known Semgrep rule families.</div></div></div><div class="ann-line"><div class="ln">11</div><div><div class="code-txt">        if rule_key in rule_id.lower():</div><div class="ann-note">Checks if the rule ID belongs to this family (e.g. 'java.lang.security.audit.path-traversal').</div></div></div><div class="ann-line"><div class="ln">12</div><div><div class="code-txt">            for idx, line in enumerate(lines):</div><div class="ann-note">Scans snippet lines top-to-bottom.</div></div></div><div class="ann-line"><div class="ln">13</div><div><div class="code-txt">                if any(re.search(p, line) for p in patterns):</div><div class="ann-note">Returns the exact line matching the dangerous sink API.</div></div></div><div class="ann-line"><div class="ln">14</div><div><div class="code-txt">                    return (idx, line.strip())</div><div class="ann-note">Found exact sink index; avoids Semgrep multi-line span offset bugs!</div></div></div><div class="ann-line"><div class="ln">15</div><div><div class="code-txt">    idx = max(0, min(reported_line - 1, len(lines) - 1))</div><div class="ann-note">Deterministic clamped fallback if no regex matches.</div></div></div><div class="ann-line"><div class="ln">16</div><div><div class="code-txt">    return (idx, lines[idx].strip())</div><div class="ann-note">Returns 0-based index and stripped sink statement.</div></div></div><div class="ann-line"><div class="ln">17</div><div><div class="code-txt">def build_annotated_prompt(code_snippet: str, line_no: int, sink_idx: int) -&gt; str:</div><div class="ann-note">Formats code with >>> [ALERT LINE n] statement grounding (Commit f25eac6).</div></div></div><div class="ann-line"><div class="ln">18</div><div><div class="code-txt">    # Non-sink lines are indented by 4 spaces; sink line gets &#x27;&gt;&gt;&gt; [ALERT LINE {line_no}]: &#x27; at col 0</div><div class="ann-note">Creates both visual outdent and distinct BPE token boundary so L0 Within-Rule AUC jumps 0.4297 -> 0.5986!</div></div></div></div>
+    </div>
+    
+    
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+      <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <span class="font-mono text-xs font-bold text-indigo-300">d1_triage/engine.py</span>
+        <span class="text-xs text-slate-400">Single-Pass Logit Softmax &amp; Explanation Synthesis</span>
+      </div>
+      <div><div class="ann-line"><div class="ln">1</div><div><div class="code-txt">@dataclass class TriageFinding:</div><div class="ann-note">Input data structure parsed from Semgrep JSON or GHSA/Vul4J JSONL.</div></div></div><div class="ann-line"><div class="ln">2</div><div><div class="code-txt">    id: str; rule: str; cwe: str; file_path: str; line_number: int; code_window: str; message: str</div><div class="ann-note">Carries both rule metadata and the raw Java code context.</div></div></div><div class="ann-line"><div class="ln">3</div><div><div class="code-txt">class D1TriageEngine:</div><div class="ann-note">Core inference wrapper around LiquidAI/d1-3B (3B Hybrid SSM).</div></div></div><div class="ann-line"><div class="ln">4</div><div><div class="code-txt">    def triage_finding(self, finding: TriageFinding) -&gt; TriageResult:</div><div class="ann-note">Runs end-to-end single-alert scoring in 12-14 ms on T4 GPU.</div></div></div><div class="ann-line"><div class="ln">5</div><div><div class="code-txt">        sink_idx, sink_stmt = find_sink_line(finding.code_window, finding.rule, finding.line_number)</div><div class="ann-note">Step 1: Localize exact sink statement.</div></div></div><div class="ann-line"><div class="ln">6</div><div><div class="code-txt">        annotated_code = build_annotated_prompt(finding.code_window, finding.line_number, sink_idx)</div><div class="ann-note">Step 2: Inject >>> [ALERT LINE n] marker.</div></div></div><div class="ann-line"><div class="ln">7</div><div><div class="code-txt">        # Single forward pass -&gt; read next-token logits at position -1</div><div class="ann-note">Step 3: Zero autoregressive decoding!</div></div></div><div class="ann-line"><div class="ln">8</div><div><div class="code-txt">        pos_logit = max(logits[pos_token_ids])  # [&#x27;yes&#x27;, &#x27;Yes&#x27;, &#x27;true&#x27;, &#x27;True&#x27;, &#x27;1&#x27;]</div><div class="ann-note">Takes strongest positive answer token logit.</div></div></div><div class="ann-line"><div class="ln">9</div><div><div class="code-txt">        neg_logit = max(logits[neg_token_ids])  # [&#x27;no&#x27;, &#x27;No&#x27;, &#x27;false&#x27;, &#x27;False&#x27;, &#x27;0&#x27;]</div><div class="ann-note">Takes strongest negative answer token logit.</div></div></div><div class="ann-line"><div class="ln">10</div><div><div class="code-txt">        p_tp = math.exp(pos_logit) / (math.exp(pos_logit) + math.exp(neg_logit))</div><div class="ann-note">Step 4: 2-class softmax produces calibrated probability P(TP) in [0, 1].</div></div></div><div class="ann-line"><div class="ln">11</div><div><div class="code-txt">        confidence_pct = abs(p_tp - 0.5) * 200.0</div><div class="ann-note">Step 5: Maps P(TP)=0.5 -> 0% confidence and P(TP) in {0,1} -> 100%.</div></div></div><div class="ann-line"><div class="ln">12</div><div><div class="code-txt">        explanation = generate_explanation(finding.rule, p_tp, sink_stmt)</div><div class="ann-note">Step 6: Rule-aware rationale synthesis with zero extra LLM latency.</div></div></div></div>
+    </div>
+    
+    
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
+      <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+        <span class="font-mono text-xs font-bold text-indigo-300">triage/decision.py</span>
+        <span class="text-xs text-slate-400">Pinned Qwen3.5-4B Deterministic Decision Scorer</span>
+      </div>
+      <div><div class="ann-line"><div class="ln">1</div><div><div class="code-txt">MODEL = &quot;Qwen/Qwen3.5-4B&quot;</div><div class="ann-note">Secondary deterministic option-scoring model in triage/decision.py (Commit d85a712).</div></div></div><div class="ann-line"><div class="ln">2</div><div><div class="code-txt">REVISION = &quot;851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a&quot;</div><div class="ann-note">Exact Hugging Face commit SHA pinned for bit-for-bit reproducible logits.</div></div></div><div class="ann-line"><div class="ln">3</div><div><div class="code-txt">QUESTION = &quot;Is this warning a real exploitable bug in the code above?&quot;</div><div class="ann-note">Reviewer question posed to DecisionScorer.</div></div></div><div class="ann-line"><div class="ln">4</div><div><div class="code-txt">def state_of(row: dict) -&gt; str:</div><div class="ann-note">Constructs normalized reviewer context from a Semgrep finding dictionary.</div></div></div><div class="ann-line"><div class="ln">5</div><div><div class="code-txt">    window = row.get(&quot;code_window&quot;, &quot;&quot;)</div><div class="ann-note">Extracts Java code window.</div></div></div><div class="ann-line"><div class="ln">6</div><div><div class="code-txt">    if len(window) &gt; MAX_CHARS:</div><div class="ann-note">MAX_CHARS = 4000 prevents context overflow on huge methods.</div></div></div><div class="ann-line"><div class="ln">7</div><div><div class="code-txt">        window = window[:MAX_CHARS] + &quot;\n// ... truncated ...&quot;</div><div class="ann-note">Deterministic truncation marker.</div></div></div><div class="ann-line"><div class="ln">8</div><div><div class="code-txt">    return &#x27;\n&#x27;.join([f&#x27;Rule: ...&#x27;, f&#x27;CWE: ...&#x27;, f&#x27;File: ...&#x27;, window])</div><div class="ann-note">Formats structured prompt state for single-pass TP vs FP option scoring.</div></div></div></div>
+    </div>
+    
+  </section>
+
+  <section class="bg-rose-950/20 border border-rose-500/30 rounded-2xl p-6 space-y-3">
+    <h2 class="text-base font-bold text-rose-300">Spot-the-Bug Drill: What happens if <code>pos_logit = 120.0</code> and <code>neg_logit = 118.0</code>?</h2>
+    <p class="text-xs text-slate-300">In naive Python, <code>math.exp(120.0)</code> works, but what if raw logits reach <code>800.0</code>? How do you make 2-class softmax numerically stable?</p>
+    <button type="button" class="drill-toggle px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold" data-target="l4_ans">Reveal Numerical Stability Trick</button>
+    <div id="l4_ans" class="hidden text-xs text-slate-200 bg-slate-950 border border-slate-800 rounded-xl p-3.5 font-mono">
+      Subtract m = max(pos_logit, neg_logit) before exponentiating: exp(pos - m) / (exp(pos - m) + exp(neg - m)). That is the log-sum-exp stability trick!
+    </div>
+  </section>
+
+  <footer class="border-t border-slate-800 pt-6 pb-8 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
+    <span>Grounded in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> &amp; <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" class="text-indigo-400 underline" target="_blank">HF: d1-3B-java-vuln-triage</a></span>
+    <span><a href="lesson_05_decisions_and_consequences.html" class="text-emerald-400 font-semibold hover:underline">Next: Lesson 5 (Decisions & Consequences) →</a></span>
+  </footer>
+  <script>
+    document.querySelectorAll('.drill-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) {
+          target.classList.toggle('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

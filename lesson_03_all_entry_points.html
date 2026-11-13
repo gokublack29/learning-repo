@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 3: Entry Points — TriageMate Deep Textbook</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #020617; color: #f1f5f9; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .ann-line { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(30,41,59,0.7); align-items: start; }
+    .ann-line:hover { background: rgba(30,41,59,0.45); }
+    .ln { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; user-select: none; padding-top: 2px; }
+    .code-txt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .ann-note { font-size: 11.5px; color: #94a3b8; margin-top: 3px; line-height: 1.45; }
+    .ann-note strong { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+  <nav class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sticky top-3 z-30 backdrop-blur">
+    <div class="font-bold text-white text-sm">
+      TriageMate Deep Course • <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">barryallen16/triagemate</a>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <a href="index.html" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold">Interactive Hub</a>
+      <a href="lesson_01_foundations_zero_to_one.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Foundations</a>
+      <a href="lesson_02_recursive_54_commits.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. All 54 Commits</a>
+      <a href="lesson_03_all_entry_points.html" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold">3. Entry Points</a>
+      <a href="lesson_04_end_to_end_data_flows.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. Data Flows &amp; Code</a>
+      <a href="lesson_05_decisions_and_consequences.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Pivots &amp; Consequences</a>
+      <a href="lesson_06_evaluation_gates_and_math.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Math &amp; Leaderboard</a>
+      <a href="lesson_07_interview_prep_guide.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Interview Prep</a>
+    </div>
+  </nav>
+
+  <header class="space-y-3">
+    <div class="text-xs font-mono text-indigo-400 uppercase tracking-wider">Lesson 03 • Complete Entry Point &amp; Execution Map</div>
+    <h1 class="text-3xl font-extrabold text-white">Every Entry Point Into the TriageMate Codebase</h1>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Depending on whether you are triaging a Semgrep JSON file, scanning a Java repo inside Docker, calling the Hugging Face Python API, training QLoRA adapters, or reproducing benchmark numbers on CPU, execution enters through one of these 6 paths.
+    </p>
+  </header>
+
+  <div class="space-y-5 text-sm text-slate-300">
+    <div class="bg-slate-900 border border-emerald-500/30 rounded-2xl p-5 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-lg font-bold text-emerald-400 font-mono">1. d1_triage.py / python -m d1_triage → d1_triage/cli.py:main()</h2>
+        <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-mono">Commit 5bb181f</span>
+      </div>
+      <p class="text-xs leading-relaxed">Primary sub-15ms developer CLI. Flags: <code>--demo</code>, <code>--scan &lt;semgrep.json&gt;</code>, <code>--benchmark {ghsa,vul4j}</code>, <code>--limit N</code>, <code>--cpu</code>, <code>--gpu</code>, <code>--mock</code>, <code>--threshold 0.5</code>, <code>--output/-o</code>, <code>--model</code>.</p>
+      <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-emerald-300 overflow-x-auto">python d1_triage.py --scan semgrep-findings.json --threshold 0.5 -o triage-report.json</pre>
+    </div>
+
+    <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-lg font-bold text-indigo-400 font-mono">2. pyproject.toml [project.scripts] triagemate → triage/cli.py:main()</h2>
+        <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/15 text-indigo-300 font-mono">Commit 14f6e76 / d85a712</span>
+      </div>
+      <p class="text-xs leading-relaxed">Full repository scanner &amp; pluggable scorer. Invokes <code>run_semgrep(target_dir, out_json)</code>, extracts code windows via <code>findings_from()</code>, and routes to <code>--scorer {model, decision, heuristic}</code>.</p>
+      <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs font-mono text-indigo-300 overflow-x-auto">triagemate /path/to/java/repo --scorer decision --decision-model Qwen/Qwen3.5-4B --json out.json</pre>
+    </div>
+
+    <div class="bg-slate-900 border border-amber-500/30 rounded-2xl p-5 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 class="text-lg font-bold text-amber-400 font-mono">3. Dockerfile ENTRYPOINT ["triagemate"]</h2>
+        <span class="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-mono">Commit 645bd4c</span>
+      </div>
+      <p class="text-xs leading-relaxed">Containerized runtime on <code>python:3.12-slim</code> bundling <code>openjdk-17-headless</code>, <code>semgrep</code>, and deterministic <code>uv sync --frozen --no-cache</code> using <code>uv.lock</code>.</p>
+    </div>
+
+    <div class="bg-slate-900 border border-sky-500/30 rounded-2xl p-5 space-y-3">
+      <h2 class="text-lg font-bold text-sky-400 font-mono">4. LiquidAI/d1-3B Python SDK (model.system_one_batch)</h2>
+      <p class="text-xs leading-relaxed">Direct Hugging Face Transformers call using <code>trust_remote_code=True</code> and <code>QUESTIONS = {"tp": {"type": "noul", "instructions": QUESTION, "criteria": CRITERIA}}</code>.</p>
+    </div>
+
+    <div class="bg-slate-900 border border-purple-500/30 rounded-2xl p-5 space-y-3">
+      <h2 class="text-lg font-bold text-purple-400 font-mono">5. training/launch.py, runner.py, train_qlora.py &amp; evaluate_llm.py</h2>
+      <p class="text-xs leading-relaxed">Multi-GPU / Kaggle training pipeline: pulls HF datasets (<code>0772aa7</code>), enforces T4 <code>fp16</code> fallback (<code>3678145</code>), trains LoRA <code>r=16, alpha=16</code> on 7 linear projections, samples errors (<code>errors.py</code>), and builds Markdown reports (<code>report.py</code>).</p>
+    </div>
+
+    <div class="bg-slate-900 border border-rose-500/30 rounded-2xl p-5 space-y-3">
+      <h2 class="text-lg font-bold text-rose-400 font-mono">6. audit/evaluate_d1.py, audit/test_whole_suite.py &amp; pytest (tests/test_*.py)</h2>
+      <p class="text-xs leading-relaxed">Zero-dependency CPU reproduction (&lt;0.2s) of all L0/L2/L3/Vul4J benchmark scores (19 assertions) plus 8 pytest unit test files covering CLI, AST dataset, decision scorer, metrics, prompts, explain, scan IDs, and verify.</p>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-800 pt-6 pb-8 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
+    <span>Grounded in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> &amp; <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" class="text-indigo-400 underline" target="_blank">HF: d1-3B-java-vuln-triage</a></span>
+    <span><a href="lesson_04_end_to_end_data_flows.html" class="text-emerald-400 font-semibold hover:underline">Next: Lesson 4 (Line-by-Line Code & Data Flows) →</a></span>
+  </footer>
+  <script>
+    document.querySelectorAll('.drill-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) {
+          target.classList.toggle('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

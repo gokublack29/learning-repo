@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 5: Pivots & Consequences — TriageMate Deep Textbook</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #020617; color: #f1f5f9; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .ann-line { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(30,41,59,0.7); align-items: start; }
+    .ann-line:hover { background: rgba(30,41,59,0.45); }
+    .ln { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; user-select: none; padding-top: 2px; }
+    .code-txt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .ann-note { font-size: 11.5px; color: #94a3b8; margin-top: 3px; line-height: 1.45; }
+    .ann-note strong { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+  <nav class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sticky top-3 z-30 backdrop-blur">
+    <div class="font-bold text-white text-sm">
+      TriageMate Deep Course • <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">barryallen16/triagemate</a>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <a href="index.html" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold">Interactive Hub</a>
+      <a href="lesson_01_foundations_zero_to_one.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Foundations</a>
+      <a href="lesson_02_recursive_54_commits.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. All 54 Commits</a>
+      <a href="lesson_03_all_entry_points.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. Entry Points</a>
+      <a href="lesson_04_end_to_end_data_flows.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. Data Flows &amp; Code</a>
+      <a href="lesson_05_decisions_and_consequences.html" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold">5. Pivots &amp; Consequences</a>
+      <a href="lesson_06_evaluation_gates_and_math.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Math &amp; Leaderboard</a>
+      <a href="lesson_07_interview_prep_guide.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Interview Prep</a>
+    </div>
+  </nav>
+
+  <header class="space-y-3">
+    <div class="text-xs font-mono text-indigo-400 uppercase tracking-wider">Lesson 05 • Architectural Decisions, Failures &amp; Empirical Consequences</div>
+    <h1 class="text-3xl font-extrabold text-white">The 6 Engineering Pivots That Transformed TriageMate</h1>
+  </header>
+  <div class="space-y-4 text-sm text-slate-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <div class="text-xs font-mono text-rose-400">Pivot 1 • Commits 226b229 → a760204 → e48e301 → 84726c7</div>
+      <h2 class="text-lg font-bold text-white">The Juliet 97.9% Illusion &amp; Identifier Leak Scrubbing</h2>
+      <p><strong>What happened:</strong> Scoring 979/1,000 (97.9%) on NIST Juliet triggered a deep audit, revealing method names like <code>goodG2B()</code> and <code>bad()</code> leaked ground truth. Scrubbing identifiers into <code>juliet-heldout-1000-neutral.csv</code> and <code>eval-clean-152.csv</code> exposed the drop in legacy adapters.</p>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <div class="text-xs font-mono text-amber-400">Pivot 2 • Commits 8cedcaa → da27f03 → 892e47d</div>
+      <h2 class="text-lg font-bold text-white">MegaVul Partial Transfer &amp; Real-World GHSA/Vul4J Benchmarks</h2>
+      <p><strong>What happened:</strong> Training on MegaVul (whole-function CVEs) transferred only partially to Vul4J Semgrep alerts because scanner triage requires sink-specific taint reachability. Built the 174-alert GHSA (68 advisories) + 126-repo Vul4J benchmark with L0/L2/L3 gates.</p>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <div class="text-xs font-mono text-indigo-400">Pivot 3 • Commits d85a712 → 5bb181f</div>
+      <h2 class="text-lg font-bold text-white">3-Line Text Generation → Single-Pass Logit Scoring</h2>
+      <p><strong>What happened:</strong> Replaced ~800ms autoregressive <code>VERDICT/WHY/FIX</code> generation with single-pass vocabulary logit softmax on <code>LiquidAI/d1-3B</code>, dropping latency to <strong>12–14 ms on T4 (6.25 GiB VRAM)</strong>.</p>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <div class="text-xs font-mono text-emerald-400">Pivot 4 &amp; 5 • Commits 645bd4c → f25eac6</div>
+      <h2 class="text-lg font-bold text-white">Unmasking Within-Rule Blindness (0.4297) &amp; Statement Sink Grounding (0.5986 / 0.6321)</h2>
+      <p><strong>What happened:</strong> Zero-Shot d1-3B achieved 0.8372 Global L3 AUC via rule priors while scoring 0.4297 L0 Within-Rule AUC due to line-number disconnect. Injecting <code>&gt;&gt;&gt; [ALERT LINE n]</code> boosted L0 Within-Rule AUC to <strong>0.5986</strong> (and L2 to <strong>0.6321</strong>) with zero weight updates, proven causal by Paired Rule-Swap Controls (+0.0749 L0 delta).</p>
+    </div>
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <div class="text-xs font-mono text-purple-400">Pivot 6 • Commits f25eac6 → 5bb181f → a6fb3fe</div>
+      <h2 class="text-lg font-bold text-white">Real-to-Real Contrastive LoRA (416 Patch Pairs) &amp; 50/50 Ensemble</h2>
+      <p><strong>What happened:</strong> Fine-tuning on 416 real pre-patch vs post-patch commit pairs achieved #1 L3 Within-Rule AUC (<strong>0.6594</strong>, +14.94% over Kev-4B) and +0.1106 L3 Swap Delta, while the 50/50 Ensemble preserved <strong>0.8000 Vul4J AUC</strong> alongside <strong>0.6280 L3 Within-Rule AUC</strong>.</p>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-800 pt-6 pb-8 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
+    <span>Grounded in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> &amp; <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" class="text-indigo-400 underline" target="_blank">HF: d1-3B-java-vuln-triage</a></span>
+    <span><a href="lesson_06_evaluation_gates_and_math.html" class="text-emerald-400 font-semibold hover:underline">Next: Lesson 6 (Metrics Math & Leaderboard) →</a></span>
+  </footer>
+  <script>
+    document.querySelectorAll('.drill-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) {
+          target.classList.toggle('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

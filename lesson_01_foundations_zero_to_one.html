@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 1: Foundations — TriageMate Deep Textbook</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #020617; color: #f1f5f9; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .ann-line { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(30,41,59,0.7); align-items: start; }
+    .ann-line:hover { background: rgba(30,41,59,0.45); }
+    .ln { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; user-select: none; padding-top: 2px; }
+    .code-txt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .ann-note { font-size: 11.5px; color: #94a3b8; margin-top: 3px; line-height: 1.45; }
+    .ann-note strong { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+  <nav class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sticky top-3 z-30 backdrop-blur">
+    <div class="font-bold text-white text-sm">
+      TriageMate Deep Course • <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">barryallen16/triagemate</a>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <a href="index.html" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold">Interactive Hub</a>
+      <a href="lesson_01_foundations_zero_to_one.html" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold">1. Foundations</a>
+      <a href="lesson_02_recursive_54_commits.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. All 54 Commits</a>
+      <a href="lesson_03_all_entry_points.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. Entry Points</a>
+      <a href="lesson_04_end_to_end_data_flows.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. Data Flows &amp; Code</a>
+      <a href="lesson_05_decisions_and_consequences.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Pivots &amp; Consequences</a>
+      <a href="lesson_06_evaluation_gates_and_math.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Math &amp; Leaderboard</a>
+      <a href="lesson_07_interview_prep_guide.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Interview Prep</a>
+    </div>
+  </nav>
+
+  <header class="space-y-3">
+    <div class="text-xs font-mono text-indigo-400 uppercase tracking-wider">Lesson 01 • Zero-to-One Foundations (Assume Nothing)</div>
+    <h1 class="text-3xl font-extrabold text-white">From Zero to SAST Triage: Semgrep, Taint Flow, ASTs, Hybrid SSMs &amp; QLoRA</h1>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      If you have never worked in Application Security (AppSec) or trained a code LLM before, start right here. Every single concept in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> builds on five foundational ideas.
+    </p>
+  </header>
+
+  <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+    <h2 class="text-lg font-bold text-white">Architecture Overview: Why Two Packages Coexist (<code>triage/</code> vs <code>d1_triage/</code>)</h2>
+    <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 overflow-x-auto">
+      <svg viewBox="0 0 860 250" class="w-full max-w-4xl mx-auto" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="20" width="170" height="75" rx="10" fill="#1e293b" stroke="#6366f1" stroke-width="1.5"/>
+        <text x="95" y="48" text-anchor="middle" fill="#f8fafc" font-size="12" font-weight="bold" font-family="Inter,sans-serif">Java Repository</text>
+        <text x="95" y="68" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="monospace">Semgrep Scan -> JSON</text>
+
+        <line x1="180" y1="57" x2="230" y2="57" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="180" y1="57" x2="230" y2="175" stroke="#64748b" stroke-width="2"/>
+
+        <rect x="230" y="15" width="260" height="90" rx="10" fill="#0f172a" stroke="#10b981" stroke-width="2"/>
+        <text x="360" y="38" text-anchor="middle" fill="#34d399" font-size="12" font-weight="bold" font-family="monospace">d1_triage/ (Era 6 Production)</text>
+        <text x="360" y="57" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">sink_finder.py: >>> [ALERT LINE n]</text>
+        <text x="360" y="74" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">engine.py: LiquidAI/d1-3B (3B SSM)</text>
+        <text x="360" y="91" text-anchor="middle" fill="#34d399" font-size="10" font-family="Inter,sans-serif">12-14 ms/alert • 6.25 GiB VRAM</text>
+
+        <rect x="230" y="130" width="260" height="95" rx="10" fill="#0f172a" stroke="#f59e0b" stroke-width="1.5"/>
+        <text x="360" y="153" text-anchor="middle" fill="#fbbf24" font-size="12" font-weight="bold" font-family="monospace">triage/ + training/ (Eras 1-5)</text>
+        <text x="360" y="172" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">dataset.py: javalang AST Slicer</text>
+        <text x="360" y="189" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">decision.py: Qwen/Qwen3.5-4B Scorer</text>
+        <text x="360" y="206" text-anchor="middle" fill="#e2e8f0" font-size="10" font-family="monospace">metrics.py: P@90R, ECE, Within-Rule</text>
+
+        <line x1="490" y1="60" x2="555" y2="105" stroke="#10b981" stroke-width="2"/>
+        <line x1="490" y1="175" x2="555" y2="125" stroke="#f59e0b" stroke-width="2"/>
+
+        <rect x="555" y="65" width="285" height="100" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="697" y="92" text-anchor="middle" fill="#38bdf8" font-size="12" font-weight="bold" font-family="Inter,sans-serif">Calibrated Triage Output</text>
+        <text x="697" y="113" text-anchor="middle" fill="#f1f5f9" font-size="10.5" font-family="monospace">P(TP) = exp(pos)/(exp(pos)+exp(neg))</text>
+        <text x="697" y="132" text-anchor="middle" fill="#cbd5e1" font-size="10" font-family="Inter,sans-serif">Rich Terminal Table + JSON CI Report</text>
+        <text x="697" y="150" text-anchor="middle" fill="#94a3b8" font-size="10" font-family="Inter,sans-serif">Ranked by Exploitability (P@90R = 0.5556)</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 text-sm text-slate-300">
+    <h2 class="text-xl font-bold text-white">The 5 Building Blocks You Must Know Cold</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+        <h3 class="font-bold text-indigo-300">1. Static Analysis (SAST) &amp; Semgrep</h3>
+        <p class="text-xs leading-relaxed">Semgrep scans source code without running it by matching AST/syntax patterns (e.g., <code>new File(baseDir, userInput)</code>). Because syntax rules cannot easily prove whether <code>userInput</code> was validated 10 lines earlier, <strong>&gt;70% of Semgrep warnings are False Positives (noise)</strong>.</p>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+        <h3 class="font-bold text-emerald-300">2. Source → Sanitizer → Sink (Taint Reachability)</h3>
+        <p class="text-xs leading-relaxed">An alert is a <strong>True Positive (TP)</strong> only if untrusted input (Source, e.g. HTTP param) reaches a dangerous API (Sink, e.g. <code>executeQuery()</code>) without an effective guard/check (Sanitizer, e.g. <code>PreparedStatement</code> or <code>Path.normalize().startsWith()</code>).</p>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+        <h3 class="font-bold text-amber-300">3. javalang AST Slicing vs. Code Windows</h3>
+        <p class="text-xs leading-relaxed"><code>triage/dataset.py</code> uses <code>javalang</code> to parse Java files into an Abstract Syntax Tree and slice only the enclosing method around an alert line. <code>d1_triage/sink_finder.py</code> uses regex sink matching on bounded code windows so it never crashes on uncompilable snippets.</p>
+      </div>
+      <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2">
+        <h3 class="font-bold text-rose-300">4. Single-Pass Logit Scoring vs. Text Generation</h3>
+        <p class="text-xs leading-relaxed">Instead of generating 50 tokens sequentially (~800 ms), TriageMate runs <strong>1 forward pass</strong> and reads the next-token logits for positive (<code>"yes", "true", "1"</code>) vs. negative (<code>"no", "false", "0"</code>) tokens, cutting latency to <strong>12–14 ms</strong> and giving a continuous probability <code>P(TP)</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-indigo-950/20 border border-indigo-500/30 rounded-2xl p-6 space-y-3">
+    <h2 class="text-base font-bold text-indigo-300">Active Recall Check (Test Yourself Before Lesson 2)</h2>
+    <p class="text-xs text-slate-300">Why does TriageMate keep both <code>triage/</code> and <code>d1_triage/</code> instead of deleting <code>triage/</code>?</p>
+    <button type="button" class="drill-toggle px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold" data-target="l1_ans">Reveal Answer</button>
+    <div id="l1_ans" class="hidden text-xs text-slate-200 bg-slate-950 border border-slate-800 rounded-xl p-3.5 leading-relaxed">
+      <code>triage/</code> houses the reusable dataset, AST slicing (<code>javalang</code>), metrics (<code>P@90R</code>, <code>ECE</code>, Within-Rule AUC), remediation hints (<code>explain.py</code>), and <code>Qwen3.5-4B</code> decision scorer wired to the <code>triagemate</code> console script and <code>Dockerfile</code>. <code>d1_triage/</code> is the standalone sub-15ms inference CLI built specifically for <code>LiquidAI/d1-3B</code> with statement-level sink anchoring.
+    </div>
+  </section>
+
+  <footer class="border-t border-slate-800 pt-6 pb-8 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
+    <span>Grounded in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> &amp; <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" class="text-indigo-400 underline" target="_blank">HF: d1-3B-java-vuln-triage</a></span>
+    <span><a href="lesson_02_recursive_54_commits.html" class="text-emerald-400 font-semibold hover:underline">Next: Lesson 2 (All 54 Commits) →</a></span>
+  </footer>
+  <script>
+    document.querySelectorAll('.drill-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) {
+          target.classList.toggle('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

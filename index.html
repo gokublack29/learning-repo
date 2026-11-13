@@ -1,0 +1,2300 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TriageMate Complete Masterclass — Recursive Commit Archaeology, Bottom-Up Architecture & Interview Prep</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    code, pre, .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+    .custom-scroll::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.5); border-radius: 9999px; }
+    .sink-highlight { background: rgba(244, 63, 94, 0.18); border-left: 3px solid #f43f5e; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-indigo-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">
+          TM
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">TriageMate Complete Engineering Masterclass</h1>
+            <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-mono">54 Commits Audited</span>
+          </div>
+          <p class="text-xs text-slate-400">
+            Bottom-up guide &amp; recursive commit archaeology for
+            <a href="https://github.com/barryallen16/triagemate" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline font-mono">barryallen16/triagemate</a>
+            &amp;
+            <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline font-mono">HF: d1-3B-java-vuln-triage</a>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <div class="bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-1.5 text-xs flex items-center gap-2">
+          <span class="text-slate-400">Mastery Progress:</span>
+          <span id="masteryBadge" class="font-mono font-semibold text-amber-400">1 / 7 Modules Visited</span>
+        </div>
+        <button id="openCheatSheetBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition shadow">
+          60-Sec Interview Pitch
+        </button>
+      </div>
+    </div>
+
+    <!-- Module Navigation Bar -->
+    <nav class="max-w-7xl mx-auto mt-3 flex items-center gap-1.5 overflow-x-auto custom-scroll pb-1" aria-label="Course Lessons">
+      <button type="button" data-tab="lesson1" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-indigo-600 text-white">
+        1. Zero-to-One Foundations
+      </button>
+      <button type="button" data-tab="lesson2" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800">
+        2. Recursive 54-Commit Archaeology
+      </button>
+      <button type="button" data-tab="lesson3" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800">
+        3. Every Entry Point &amp; File Tree
+      </button>
+      <button type="button" data-tab="lesson4" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800">
+        4. Interactive Data-Flow Simulator
+      </button>
+      <button type="button" data-tab="lesson5" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800">
+        5. Decisions, Plot Twists &amp; Consequences
+      </button>
+      <button type="button" data-tab="lesson6" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800">
+        6. Evaluation Gates, Math &amp; Leaderboard
+      </button>
+      <button type="button" data-tab="lesson7" class="nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800">
+        7. Interview Simulator (28 Q&amp;As + Quiz)
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 py-6 space-y-8">
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 1: ZERO-TO-ONE FOUNDATIONS (ASSUME YOU KNOW NOTHING)           -->
+    <!-- ===================================================================== -->
+    <section id="lesson1" class="tab-panel space-y-6">
+      <div class="bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="max-w-3xl space-y-2">
+            <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 01 • Bottom-Up Mental Model (Zero Prerequisites)</span>
+            <h2 class="text-2xl sm:text-3xl font-bold text-white">What Problem Does TriageMate Actually Solve?</h2>
+            <p class="text-sm text-slate-300 leading-relaxed">
+              Before touching a single file in <a href="https://github.com/barryallen16/triagemate" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">barryallen16/triagemate</a>, let's build the vocabulary from scratch. Imagine you are a security engineer at a company with 500,000 lines of Java code. You run a free automated code scanner called <a href="https://github.com/returntocorp/semgrep" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">Semgrep</a>. Semgrep flags <strong>1,000 security warnings</strong>. Here is the catch: <strong>over 70% to 85% of those warnings are False Positives (noise)</strong>. Developers get alert fatigue and ignore all of them.
+            </p>
+          </div>
+          <div class="grid grid-cols-2 gap-3 min-w-[240px]">
+            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl text-center">
+              <div class="text-2xl font-extrabold text-emerald-400 font-mono">12–14 ms</div>
+              <div class="text-xs text-slate-400 mt-0.5">Latency per alert on T4 GPU</div>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl text-center">
+              <div class="text-2xl font-extrabold text-indigo-400 font-mono">6.25 GiB</div>
+              <div class="text-xs text-slate-400 mt-0.5">Peak VRAM (LiquidAI d1-3B)</div>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl text-center">
+              <div class="text-2xl font-extrabold text-amber-400 font-mono">0.8372</div>
+              <div class="text-xs text-slate-400 mt-0.5">L3 Verified Fix Hunk AUC</div>
+            </div>
+            <div class="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl text-center">
+              <div class="text-2xl font-extrabold text-rose-400 font-mono">0.8000</div>
+              <div class="text-xs text-slate-400 mt-0.5">Vul4J Real CVEs AUC (126 repos)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Concept Builder -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+          <h3 class="text-base font-bold text-white flex items-center justify-between">
+            <span>Step-by-Step Building Blocks</span>
+            <span class="text-xs font-normal text-slate-400">Click each concept in order</span>
+          </h3>
+          <div id="foundationConceptList" class="space-y-2"></div>
+        </div>
+
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between space-y-5" id="foundationDetailCard">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- Dual Engine Comparison Matrix (Why there are TWO packages: triage/ vs d1_triage/) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-lg font-bold text-white">Crucial Architectural Insight: Why Does the Repo Have Both <code class="text-indigo-400">triage/</code> and <code class="text-emerald-400">d1_triage/</code>?</h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Interviewers ALWAYS ask this! Understanding the coexistence of these two directories is the key to understanding the entire repository history.
+            </p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/60">
+                <th class="py-3 px-4 font-semibold">Dimension</th>
+                <th class="py-3 px-4 font-semibold text-amber-300">Era 1–2: Generative QLoRA (<code class="font-mono">triage/</code> + <code class="font-mono">training/</code>)</th>
+                <th class="py-3 px-4 font-semibold text-indigo-300">Era 3: Deterministic Decision Scorer (<code class="font-mono">triage/decision.py</code>)</th>
+                <th class="py-3 px-4 font-semibold text-emerald-300">Era 4: Production Hybrid SSM Engine (<code class="font-mono">d1_triage/</code>)</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/70 text-slate-300">
+              <tr>
+                <td class="py-3 px-4 font-medium text-white">Core Model</td>
+                <td class="py-3 px-4 font-mono text-xs">unsloth/Qwen2.5-Coder-7B-Instruct-bnb-4bit</td>
+                <td class="py-3 px-4 font-mono text-xs">Qwen/Qwen3.5-4B (rev <code class="text-slate-400">851bf6e8</code>)</td>
+                <td class="py-3 px-4 font-mono text-xs">LiquidAI/d1-3B (3B Hybrid SSM)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-medium text-white">Inference Mechanism</td>
+                <td class="py-3 px-4">Autoregressive text generation (3 lines: <code class="font-mono">VERDICT</code>, <code class="font-mono">WHY</code>, <code class="font-mono">FIX</code>)</td>
+                <td class="py-3 px-4">Single forward pass logit scoring over bounded options (<code class="font-mono">TP</code> vs <code class="font-mono">FP</code>)</td>
+                <td class="py-3 px-4">Single forward pass binary token logit softmax + statement sink anchoring (<code class="font-mono">&gt;&gt;&gt; [ALERT LINE X]</code>)</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-medium text-white">Code Extraction</td>
+                <td class="py-3 px-4"><code class="font-mono">javalang</code> AST parser extracts enclosing Java method (<code class="font-mono">triage/dataset.py</code>)</td>
+                <td class="py-3 px-4">4,000-char code window (<code class="font-mono">MAX_CHARS</code>) around flagged line</td>
+                <td class="py-3 px-4">Regex sink finder (<code class="font-mono">d1_triage/sink_finder.py</code>) injects <code class="font-mono">&gt;&gt;&gt;</code> at exact vulnerable sink statement</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-medium text-white">Latency &amp; VRAM</td>
+                <td class="py-3 px-4">~500–1,200 ms / alert (multi-token decoding)</td>
+                <td class="py-3 px-4">~85 ms / alert • 12.8 GB VRAM (Dense 4B)</td>
+                <td class="py-3 px-4 font-semibold text-emerald-400">12–14 ms / alert (T4 GPU) • 6.25 GiB VRAM</td>
+              </tr>
+              <tr>
+                <td class="py-3 px-4 font-medium text-white">Key Lesson Learned</td>
+                <td class="py-3 px-4">High score on synthetic Juliet (97.9%) was due to <code class="font-mono">good</code>/<code class="font-mono">bad</code> identifier leakage; failed on real CVEs.</td>
+                <td class="py-3 px-4">Eliminated generation overhead, but unanchored prompts suffered from 0.4297 within-rule AUC blindness.</td>
+                <td class="py-3 px-4">Statement sink grounding + 416 real patch pairs contrastive LoRA solved within-rule discrimination (0.6594 L3).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 2: RECURSIVE 54-COMMIT ARCHAEOLOGY                             -->
+    <!-- ===================================================================== -->
+    <section id="lesson2" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 02 • Complete Git History Reconstruction</span>
+            <h2 class="text-2xl font-bold text-white mt-1">All 54 Commits: Recursive Backtracking vs. Bottom-Up Evolution</h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              Toggle between <strong>Recursive Backtracking</strong> (starting from <code class="font-mono text-emerald-400">HEAD a6fb3fe</code> on Oct 31, 2026 and walking parent-by-parent back to <code class="font-mono text-amber-400">b5349cf</code> on Jul 1, 2025) and <strong>Bottom-Up Chronological Order</strong> (from commit #1 to commit #54). Click any commit to inspect its exact problem, engineering decision, files touched, and consequence.
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="toggleDirectionBtn" type="button" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5">
+              <span id="directionLabel">Mode: Recursive Backtracking (HEAD #54 → Root #1)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Era Filters & Search -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
+          <div class="flex flex-wrap items-center gap-1.5" id="eraFilterContainer">
+            <button type="button" data-era="ALL" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white">All 54 Commits</button>
+            <button type="button" data-era="ERA1" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Era 1: Corpus &amp; AST (#1–#9)</button>
+            <button type="button" data-era="ERA2" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Era 2: Early LoRA &amp; Clean Eval (#10–#19)</button>
+            <button type="button" data-era="ERA3" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Era 3: Juliet Name Leak Crisis (#20–#24)</button>
+            <button type="button" data-era="ERA4" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Era 4: Triage Package &amp; Hardening (#25–#47)</button>
+            <button type="button" data-era="ERA5" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Era 5: MegaVul Transfer &amp; Vul4J (#48–#50)</button>
+            <button type="button" data-era="ERA6" class="era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Era 6: LiquidAI d1-3B &amp; GHSA (#51–#54)</button>
+          </div>
+          <div class="relative w-full sm:w-64">
+            <input id="commitSearchInput" type="text" placeholder="Search SHA, file, or keyword..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Split Commit List & Deep Inspector -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-4">
+          <div class="flex items-center justify-between mb-3 px-1">
+            <span id="commitCountReadout" class="text-xs font-mono text-slate-400">Showing 54 of 54 commits</span>
+            <span class="text-xs text-slate-400">Click any commit row to inspect</span>
+          </div>
+          <div id="commitListContainer" class="space-y-1.5 max-h-[580px] overflow-y-auto custom-scroll pr-1"></div>
+        </div>
+
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 sticky top-28 self-start space-y-4" id="commitInspectorPanel">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 3: EVERY ENTRY POINT & COMPLETE FILE TREE                      -->
+    <!-- ===================================================================== -->
+    <section id="lesson3" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2">
+        <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 03 • Complete Entry Point &amp; Module Inventory</span>
+        <h2 class="text-2xl font-bold text-white">Every Entry Point &amp; Module in <code class="font-mono text-indigo-400">barryallen16/triagemate</code></h2>
+        <p class="text-xs sm:text-sm text-slate-300">
+          When an interviewer asks <em>"Where does execution start when a user or CI pipeline invokes TriageMate?"</em>, there isn't just one answer—there are <strong>6 distinct entry points</strong> depending on whether you are running sub-15ms d1-3B inference, full Semgrep scanning + Qwen scoring, Docker containerization, QLoRA fine-tuning, or zero-dependency benchmark auditing.
+        </p>
+      </div>
+
+      <!-- 6 Entry Points Selector -->
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3" id="entryPointCards"></div>
+
+      <!-- Selected Entry Point Detail View -->
+      <div id="entryPointDetailPanel" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4"></div>
+
+      <!-- Interactive File Tree Explorer -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+          <h3 class="text-base font-bold text-white">Interactive Repository File Explorer</h3>
+          <p class="text-xs text-slate-400">Click any file in the repository tree to inspect its exact role, functions, classes, and upstream/downstream callers.</p>
+          <div id="fileTreeList" class="space-y-1.5 max-h-[500px] overflow-y-auto custom-scroll pr-1"></div>
+        </div>
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4" id="fileDetailPanel"></div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 4: INTERACTIVE END-TO-END DATA FLOW SIMULATOR                  -->
+    <!-- ===================================================================== -->
+    <section id="lesson4" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 04 • Step-by-Step Pipeline Execution Tracer</span>
+            <h2 class="text-2xl font-bold text-white mt-1">Trace an Alert Through Every Function &amp; Tensor Transformation</h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              Select one of 4 real Java security findings below and step through all 5 stages of the <code class="font-mono text-indigo-400">d1_triage</code> pipeline—from raw Semgrep JSON to regex sink localization, <code class="font-mono text-rose-400">&gt;&gt;&gt; [ALERT LINE n]</code> prompt injection, single-pass binary logit softmax, and Rich report formatting.
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2" id="scenarioButtonGroup"></div>
+        </div>
+      </div>
+
+      <!-- 5-Stage Pipeline Stepper -->
+      <div class="grid grid-cols-1 sm:grid-cols-5 gap-2.5" id="pipelineStageTabs"></div>
+
+      <!-- Active Stage Content -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4" id="pipelineStageLeft"></div>
+        <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <h3 class="text-base font-bold text-white flex items-center justify-between">
+            <span>Interactive Single-Pass Logit Calculator</span>
+            <span class="text-xs font-mono text-emerald-400">d1_triage/engine.py</span>
+          </h3>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            In <code class="font-mono text-slate-200">d1_triage/engine.py</code>, the model does <strong>not</strong> generate multi-sentence text. Instead, it extracts the final-token logits for positive tokens (<code class="font-mono">"yes", "Yes", "true", "True", "1"</code>) and negative tokens (<code class="font-mono">"no", "No", "false", "False", "0"</code>), takes the maximum of each group, and applies a 2-class softmax:
+          </p>
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-indigo-300 space-y-1">
+            <div>pos_logit = max(logits[pos_ids])</div>
+            <div>neg_logit = max(logits[neg_ids])</div>
+            <div>P(TP) = exp(pos_logit) / (exp(pos_logit) + exp(neg_logit))</div>
+            <div>confidence_pct = |P(TP) - 0.5| * 200</div>
+          </div>
+
+          <div class="space-y-3 pt-2">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <label for="posLogitSlider" class="text-slate-300 font-medium">Positive Token Max Logit (<code class="font-mono">pos_logit</code>)</label>
+                <span id="posLogitValue" class="font-mono text-emerald-400">4.20</span>
+              </div>
+              <input id="posLogitSlider" type="range" min="-5" max="10" step="0.1" value="4.2" class="w-full accent-emerald-500" />
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <label for="negLogitSlider" class="text-slate-300 font-medium">Negative Token Max Logit (<code class="font-mono">neg_logit</code>)</label>
+                <span id="negLogitValue" class="font-mono text-rose-400">1.30</span>
+              </div>
+              <input id="negLogitSlider" type="range" min="-5" max="10" step="0.1" value="1.3" class="w-full accent-rose-500" />
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <label for="thresholdSlider" class="text-slate-300 font-medium">CLI Decision Threshold (<code class="font-mono">--threshold</code>)</label>
+                <span id="thresholdValue" class="font-mono text-indigo-400">0.50</span>
+              </div>
+              <input id="thresholdSlider" type="range" min="0.1" max="0.9" step="0.05" value="0.50" class="w-full accent-indigo-500" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2.5 pt-2">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
+              <div class="text-xs text-slate-400">P(TP) Score</div>
+              <div id="calcPtpReadout" class="text-lg font-bold font-mono text-white mt-0.5">0.9478</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
+              <div class="text-xs text-slate-400">Confidence %</div>
+              <div id="calcConfReadout" class="text-lg font-bold font-mono text-amber-400 mt-0.5">89.6%</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-center">
+              <div class="text-xs text-slate-400">Verdict</div>
+              <div id="calcVerdictReadout" class="text-lg font-bold font-mono text-rose-400 mt-0.5">TP (EXPLOIT)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 5: DECISIONS, PLOT TWISTS & CONSEQUENCES                       -->
+    <!-- ===================================================================== -->
+    <section id="lesson5" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-2">
+        <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 05 • Architectural Decisions, Failures &amp; Empirical Consequences</span>
+        <h2 class="text-2xl font-bold text-white">The 6 Major Engineering Pivots That Defined TriageMate</h2>
+        <p class="text-xs sm:text-sm text-slate-300">
+          Great engineering interviews focus on <strong>what went wrong</strong>, how you diagnosed the root cause, what hypothesis you formed, and how you proved your fix worked with controlled ablations. Here are all 6 pivots directly from the commit history.
+        </p>
+      </div>
+
+      <div id="pivotsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-5"></div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 6: EVALUATION GATES (L0/L2/L3), MATH & LEADERBOARD             -->
+    <!-- ===================================================================== -->
+    <section id="lesson6" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-3">
+        <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 06 • Rigorous Evaluation Protocol &amp; Mathematical Formulations</span>
+        <h2 class="text-2xl font-bold text-white">Why Global AUC Lies—and How L0/L2/L3, Within-Rule AUC, P@90R &amp; Rule-Swap Controls Work</h2>
+        <p class="text-xs sm:text-sm text-slate-300">
+          Every figure below is verified directly against <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">barryallen16/d1-3B-java-vuln-triage</a> and <code class="font-mono text-indigo-300">audit/evaluate_d1.py</code> across <strong>174 real-world Java findings (68 GHSA advisories)</strong> and <strong>126 Vul4J repositories</strong>.
+        </p>
+      </div>
+
+      <!-- L0 / L2 / L3 Label Hierarchy Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-slate-800 text-slate-300">Gate Level L0</span>
+            <span class="text-xs text-slate-400">Noisy Location Proxy</span>
+          </div>
+          <h3 class="text-base font-bold text-white">L0: File/Method Location Proxy</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            A Semgrep alert is labeled positive if it merely lands in a file or region touched by a security patch, regardless of whether the Semgrep rule's CWE matches the advisory's CWE. High label noise; favors models that guess based on broad file/rule heuristics.
+          </p>
+        </div>
+        <div class="bg-slate-900 border border-indigo-500/30 rounded-2xl p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-indigo-500/20 text-indigo-300">Gate Level L2</span>
+            <span class="text-xs text-indigo-400">Stored + CWE Match</span>
+          </div>
+          <h3 class="text-base font-bold text-white">L2: Stored Hunk + CWE Alignment</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Requires both spatial overlap with the vulnerability region AND semantic alignment between the Semgrep rule's CWE family and the GitHub Security Advisory (GHSA) CWE. Filters out coincidental lint alerts on patched files.
+          </p>
+        </div>
+        <div class="bg-slate-900 border border-emerald-500/40 rounded-2xl p-5 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-emerald-500/20 text-emerald-300">Gate Level L3 (Gold Standard)</span>
+            <span class="text-xs text-emerald-400">Verified Fix Hunk + CWE</span>
+          </div>
+          <h3 class="text-base font-bold text-white">L3: Clean Verified Fix Hunk + CWE</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Strictest ground truth (<code class="font-mono">892e47d</code>): the flagged line sits directly inside a verified human-adjudicated security patch diff hunk AND matches the exact CWE of the CVE/GHSA. Zero-shot d1-3B achieves <strong>0.8372 Global AUC</strong> and Contrastive LoRA achieves <strong>0.6594 Within-Rule AUC</strong>.
+          </p>
+        </div>
+      </div>
+
+      <!-- Interactive Chart + Leaderboard Table -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <h3 class="text-base font-bold text-white">Interactive Benchmark Visualizer</h3>
+            <select id="metricChartSelect" class="bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200">
+              <option value="l3_both">L3 Global AUC vs. L3 Within-Rule AUC</option>
+              <option value="within_all">Within-Rule AUC Across L0, L2, L3</option>
+              <option value="vul4j_and_delta">Vul4J Real CVEs AUC &amp; L0 Rule-Swap Delta</option>
+            </select>
+          </div>
+          <div class="relative h-72 w-full">
+            <canvas id="leaderboardChart"></canvas>
+          </div>
+          <p id="chartInsightCaption" class="text-xs text-slate-400 bg-slate-950/80 border border-slate-800 rounded-xl p-3"></p>
+        </div>
+
+        <div class="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 overflow-x-auto">
+          <h3 class="text-base font-bold text-white">Complete Official Leaderboard Matrix</h3>
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/60">
+                <th class="py-2.5 px-2.5">Model / Variant</th>
+                <th class="py-2.5 px-2 text-right">L0 AUC</th>
+                <th class="py-2.5 px-2 text-right">L0 Within</th>
+                <th class="py-2.5 px-2 text-right">L0 Δ Swap</th>
+                <th class="py-2.5 px-2 text-right">L2 AUC</th>
+                <th class="py-2.5 px-2 text-right">L2 Within</th>
+                <th class="py-2.5 px-2 text-right">L3 AUC</th>
+                <th class="py-2.5 px-2 text-right">L3 Within</th>
+                <th class="py-2.5 px-2 text-right">Vul4J AUC</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/70 font-mono text-slate-200">
+              <tr>
+                <td class="py-2.5 px-2.5 font-sans font-medium text-slate-300">Heuristic Baseline</td>
+                <td class="py-2.5 px-2 text-right">0.5886</td>
+                <td class="py-2.5 px-2 text-right text-slate-500">0.5000</td>
+                <td class="py-2.5 px-2 text-right text-slate-500">N/A</td>
+                <td class="py-2.5 px-2 text-right">0.6223</td>
+                <td class="py-2.5 px-2 text-right text-slate-500">0.5000</td>
+                <td class="py-2.5 px-2 text-right">0.5235</td>
+                <td class="py-2.5 px-2 text-right text-slate-500">0.5000</td>
+                <td class="py-2.5 px-2 text-right">0.5778</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-2.5 font-sans font-medium text-amber-300">Kev-4B (Dense 4B)</td>
+                <td class="py-2.5 px-2 text-right font-bold text-amber-300">0.7521</td>
+                <td class="py-2.5 px-2 text-right text-rose-400">0.4612</td>
+                <td class="py-2.5 px-2 text-right">+0.0180</td>
+                <td class="py-2.5 px-2 text-right">0.7594</td>
+                <td class="py-2.5 px-2 text-right text-rose-400">0.4820</td>
+                <td class="py-2.5 px-2 text-right">0.7167</td>
+                <td class="py-2.5 px-2 text-right">0.5100</td>
+                <td class="py-2.5 px-2 text-right">0.6667</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-2.5 font-sans font-medium text-indigo-300">d1-3B Zero-Shot</td>
+                <td class="py-2.5 px-2 text-right">0.6941</td>
+                <td class="py-2.5 px-2 text-right text-rose-400">0.4297</td>
+                <td class="py-2.5 px-2 text-right">+0.0202</td>
+                <td class="py-2.5 px-2 text-right font-bold text-indigo-300">0.7861</td>
+                <td class="py-2.5 px-2 text-right text-rose-400">0.4571</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.8372</td>
+                <td class="py-2.5 px-2 text-right">0.5495</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.8000</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-2.5 font-sans font-medium text-sky-300">d1-3B Targeted Prompt</td>
+                <td class="py-2.5 px-2 text-right">0.6098</td>
+                <td class="py-2.5 px-2 text-right text-emerald-400">0.5986</td>
+                <td class="py-2.5 px-2 text-right text-emerald-400">+0.0749</td>
+                <td class="py-2.5 px-2 text-right">0.5843</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.6321</td>
+                <td class="py-2.5 px-2 text-right">0.6261</td>
+                <td class="py-2.5 px-2 text-right">0.5761</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.8000</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-2.5 font-sans font-medium text-emerald-300">d1-3B Contrastive LoRA</td>
+                <td class="py-2.5 px-2 text-right">0.5953</td>
+                <td class="py-2.5 px-2 text-right">0.5374</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">+0.0839</td>
+                <td class="py-2.5 px-2 text-right">0.5214</td>
+                <td class="py-2.5 px-2 text-right">0.5095</td>
+                <td class="py-2.5 px-2 text-right">0.5988</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.6594</td>
+                <td class="py-2.5 px-2 text-right">0.5444</td>
+              </tr>
+              <tr>
+                <td class="py-2.5 px-2.5 font-sans font-medium text-purple-300">d1-3B 50/50 Ensemble</td>
+                <td class="py-2.5 px-2 text-right">0.6227</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.6213</td>
+                <td class="py-2.5 px-2 text-right text-emerald-400">+0.0794</td>
+                <td class="py-2.5 px-2 text-right">0.5682</td>
+                <td class="py-2.5 px-2 text-right">0.6214</td>
+                <td class="py-2.5 px-2 text-right">0.6125</td>
+                <td class="py-2.5 px-2 text-right">0.6280</td>
+                <td class="py-2.5 px-2 text-right font-bold text-emerald-400">0.8000</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="text-xs text-slate-400 pt-2 leading-relaxed">
+            <strong>Key Takeaway for Interviews:</strong> Notice why the <strong>50/50 Ensemble</strong> (averaging Zero-Shot + Targeted/Contrastive probabilities) is so strong: Zero-Shot carries the rule-family prior (Global L3 AUC 0.8372, Vul4J 0.8000), while Targeted Prompt / Contrastive LoRA carries the within-rule code dataflow signal (Within-Rule AUC 0.6280–0.6594, Rule-Swap Delta +0.0794 to +0.1106 on L3).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- LESSON 7: INTERVIEW DEFENSE SIMULATOR (28 DEEP Q&As + QUIZ MODE)      -->
+    <!-- ===================================================================== -->
+    <section id="lesson7" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <span class="text-xs font-mono uppercase tracking-wider text-indigo-400">Lesson 07 • High-Stakes Technical Interview Prep</span>
+            <h2 class="text-2xl font-bold text-white mt-1">Interview Defense Simulator: 28 Deep Follow-Up Questions &amp; Interactive Quiz</h2>
+            <p class="text-xs sm:text-sm text-slate-300 mt-1">
+              Practice answering the exact probing questions a Staff Security Engineer or ML Systems Interviewer will ask when they look at <a href="https://github.com/barryallen16/triagemate" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">barryallen16/triagemate</a>.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="revealAllQaBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+              Expand All Answers
+            </button>
+            <button id="collapseAllQaBtn" type="button" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition">
+              Collapse All
+            </button>
+          </div>
+        </div>
+
+        <!-- Category Filters -->
+        <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800">
+          <div class="flex flex-wrap gap-1.5" id="qaCategoryButtons">
+            <button type="button" data-qacat="ALL" class="qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white">All Questions (28)</button>
+            <button type="button" data-qacat="ARCH" class="qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Architecture &amp; Codebase</button>
+            <button type="button" data-qacat="ML" class="qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">LLM, SSM &amp; Logit Math</button>
+            <button type="button" data-qacat="DATA" class="qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">Data Leaks &amp; Evaluation Gates</button>
+            <button type="button" data-qacat="SEC" class="qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700">SAST, Semgrep &amp; Java AST</button>
+          </div>
+          <input id="qaSearchInput" type="text" placeholder="Filter interview questions..." class="w-full sm:w-64 bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-indigo-500" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Q&A Flashcards Column -->
+        <div class="lg:col-span-8 space-y-3" id="qaCardsContainer"></div>
+
+        <!-- Interactive Multiple-Choice Mock Quiz Column -->
+        <div class="lg:col-span-4 bg-slate-900 border border-slate-800 rounded-2xl p-5 self-start sticky top-28 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-base font-bold text-white">Rapid-Fire Mock Quiz</h3>
+            <span id="quizScoreBadge" class="text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">Score: 0 / 0</span>
+          </div>
+          <div id="quizContainer" class="space-y-4"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 60-Second Pitch Modal -->
+  <div id="cheatSheetModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-3xl w-full p-6 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <span class="text-xs font-mono text-indigo-400 uppercase">Memorize This Verbatim</span>
+          <h3 class="text-lg font-bold text-white">The 60-Second Executive Interview Pitch for TriageMate</h3>
+        </div>
+        <button id="closeCheatSheetBtn" type="button" class="text-slate-400 hover:text-white text-sm px-2.5 py-1 rounded-lg bg-slate-800">Close</button>
+      </div>
+      <div class="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+        <p class="bg-slate-950 border border-indigo-500/30 rounded-xl p-4 text-slate-200">
+          "<strong>TriageMate</strong> is a local static-analysis (SAST) alert triage engine for Java that filters out Semgrep false positives in <strong>12 to 14 milliseconds per alert</strong> on a single T4 GPU using <strong>6.25 GiB of VRAM</strong>.
+          <br><br>
+          When I started the project, I followed the standard academic playbook: I parsed Java methods with <code class="font-mono text-indigo-300">javalang</code> ASTs and fine-tuned a 4-bit QLoRA <code class="font-mono text-indigo-300">Qwen2.5-Coder-7B</code> model on synthetic Juliet and MegaVul datasets, hitting <strong>97.9% accuracy</strong>. However, when I audited the predictions, I discovered two critical flaws: first, Juliet had <strong>lexical identifier leaks</strong> (method names like <code class="font-mono text-rose-300">goodG2B</code> and <code class="font-mono text-rose-300">bad</code>), and second, models trained on synthetic benchmarks suffered complete <strong>domain collapse</strong> when evaluated on real-world GitHub Security Advisories (GHSA) and Vul4J repositories.
+          <br><br>
+          Even worse, when I separated <strong>Global ROC-AUC</strong> from <strong>Within-Rule ROC-AUC</strong> across 174 real GHSA alerts and 126 Vul4J repositories, I found that zero-shot models had a high global AUC (<strong>0.8372 on L3</strong>) simply by memorizing which Semgrep rule IDs were noisy, while their <strong>within-rule AUC was 0.4297</strong>—worse than a coin flip—because of a <strong>line-number disconnect</strong>: the model didn't know which statement in the 60-line code window triggered the alert.
+          <br><br>
+          I solved this in three steps:
+          <br>
+          1. <strong>Single-Pass Logit Scoring (<code class="font-mono text-emerald-300">LiquidAI/d1-3B</code> Hybrid SSM):</strong> Instead of slow multi-line autoregressive generation, I extracted single-pass next-token logits over Yes/No exploitability criteria, cutting latency to 12–14 ms.
+          <br>
+          2. <strong>Statement-Level Sink Grounding (<code class="font-mono text-emerald-300">d1_triage/sink_finder.py</code>):</strong> I built a rule-aware regex sink locator that injects <code class="font-mono text-rose-300">&gt;&gt;&gt; [ALERT LINE n]</code> directly on the vulnerable sink line. Without changing a single model weight, L0 Within-Rule AUC jumped from <strong>0.4297 to 0.5986</strong> (and L2 to <strong>0.6321</strong>).
+          <br>
+          3. <strong>Real-to-Real Contrastive LoRA &amp; Rule-Swap Controls:</strong> By fine-tuning on <strong>416 real pre-patch vs. post-patch commit pairs</strong>, L3 Within-Rule AUC reached <strong>0.6594</strong> (+14.94% over Kev-4B), and paired <strong>rule-swap controls</strong> proved a strictly positive code signal delta (<strong>+0.0749 on L0, +0.1106 on L3</strong>), proving the model actually inspects Java dataflow rather than guessing from rule names."
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // DATA INVENTORY (100% Grounded in barryallen16/triagemate & HF model card)
+    // =========================================================================
+
+    const FOUNDATIONS_DATA = [
+      {
+        id: 'f1',
+        step: '01',
+        title: 'Static Analysis (SAST) & Semgrep Rules',
+        subtitle: 'What produces the alerts in the first place?',
+        summary: 'Static Application Security Testing (SAST) scans source code without running it. Semgrep matches syntax patterns (like new File(baseDir, userInput)) against YAML security rules.',
+        deepDive: `When you run Semgrep on a Java repository, it looks for dangerous code patterns defined by rules like <code class="text-indigo-300">java.lang.security.audit.path-traversal</code> or <code class="text-indigo-300">formatted-sql-string</code>. Each rule maps to a <strong>CWE (Common Weakness Enumeration)</strong>, such as <strong>CWE-22 (Path Traversal)</strong>, <strong>CWE-89 (SQL Injection)</strong>, or <strong>CWE-611 (XML External Entity / XXE)</strong>.<br><br><strong>Why Semgrep has a 70–85% False Positive rate:</strong> Pattern matchers see that a dangerous API (like <code class="text-rose-300">new File(...)</code>) was called, but they often struggle to know whether the variable passed into it was already validated three lines earlier, comes from a hardcoded constant, or sits inside dead/test code.`,
+        codeExample: `// Semgrep flags BOTH of these lines with the exact same rule!
+// Case A: True Positive (Exploitable CWE-22)
+File target = new File("/var/reports", request.getParameter("reportName"));
+
+// Case B: False Positive (Sanitized / Safe)
+String cleanName = FilenameUtils.getName(request.getParameter("reportName"));
+if (!ALLOWED_FILES.contains(cleanName)) throw new SecurityException();
+File target = new File("/var/reports", cleanName);`,
+        interviewTip: 'In an interview, define TriageMate clearly as a post-scanner filter/ranker: Semgrep provides high recall (finds candidate sinks fast), while TriageMate provides high precision (ranks true exploitability).'
+      },
+      {
+        id: 'f2',
+        step: '02',
+        title: 'Sources, Sinks & Sanitizers (Taint Analysis 101)',
+        subtitle: 'The security mental model encoded into TriageMate prompts',
+        summary: 'A vulnerability is only a True Positive (TP) if untrusted input (Source) reaches a dangerous operation (Sink) without an effective guard or check (Sanitizer).',
+        deepDive: `Every prompt in TriageMate—both in <code class="text-indigo-300">triage/decision.py</code> and <code class="text-emerald-300">d1_triage/engine.py</code>—is built around <strong>taint reachability</strong>:<br>
+        • <strong>Source:</strong> Where untrusted data enters (<code class="text-slate-200">HttpServletRequest.getParameter()</code>, <code class="text-slate-200">@RequestParam</code>, socket streams).<br>
+        • <strong>Sink:</strong> The dangerous Java call where execution/file access happens (<code class="text-rose-300">Paths.get()</code>, <code class="text-rose-300">Statement.executeQuery()</code>, <code class="text-rose-300">ObjectInputStream.readObject()</code>, <code class="text-rose-300">DocumentBuilderFactory.newDocumentBuilder()</code>).<br>
+        • <strong>Sanitizer / Guard:</strong> Validation that neutralizes the attack (e.g., <code class="text-emerald-300">canonicalPath.startsWith(baseDir)</code>, <code class="text-emerald-300">PreparedStatement</code>, <code class="text-emerald-300">setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)</code>, allowlists).`,
+        codeExample: `CRITERIA = {
+  "true": "Untrusted input reaches the flagged sink marked with '>>>', and no effective validation, escaping, or containment check neutralizes it in the code.",
+  "false": "The flagged sink is protected by guards/validation, input is from a trusted or static source, or the pattern is safe or style-only."
+}`,
+        interviewTip: 'Point out that TriageMate explicitly teaches the LLM this 3-part rule via the CRITERIA dictionary in d1-3B rather than asking a vague question like "Is this code secure?"'
+      },
+      {
+        id: 'f3',
+        step: '03',
+        title: 'AST Parsing with javalang vs. Sliding Code Windows',
+        subtitle: 'How do we feed Java files into an LLM context window?',
+        summary: 'Enterprise Java files can be 3,000+ lines long. TriageMate evolved from AST method slicing via javalang (triage/dataset.py) to anchored code windows (d1_triage/sink_finder.py).',
+        deepDive: `In Commit <code class="text-amber-300">1894b83</code> (<em>preprocess with javalang</em>) and <code class="text-amber-300">14f6e76</code> (<code class="text-indigo-300">triage/dataset.py</code>), TriageMate parsed raw Java source files into an <strong>Abstract Syntax Tree (AST)</strong> using Python's <code class="text-indigo-300">javalang</code> library. Given the line number reported by Semgrep, it walked the AST nodes (<code class="text-slate-200">MethodDeclaration</code>, <code class="text-slate-200">ConstructorDeclaration</code>) to extract only the enclosing method.<br><br>Why does <code class="text-indigo-300">triage/decision.py</code> also have a <code class="text-amber-300">MAX_CHARS = 4000</code> fallback and why does <code class="text-emerald-300">d1_triage/sink_finder.py</code> operate on code windows? Because real-world patches or partially broken repository snapshots sometimes fail strict full-file AST parsing, so slicing a bounded window around the flagged line and anchoring the exact statement with <code class="text-rose-300">&gt;&gt;&gt; [ALERT LINE n]</code> guarantees 100% parse reliability.`,
+        codeExample: `# From triage/decision.py:
+window = row.get("code_window", "")
+if len(window) > MAX_CHARS:
+    window = window[:MAX_CHARS] + "\\n// ... truncated ..."`,
+        interviewTip: 'Mention how javalang AST slicing + MAX_CHARS windowing complement each other: javalang provides clean method boundaries during dataset construction, while window + regex sink anchoring guarantees zero parser crashes at CLI runtime.'
+      },
+      {
+        id: 'f4',
+        step: '04',
+        title: 'Autoregressive Text Generation vs. Single-Pass Logit Scoring',
+        subtitle: 'How TriageMate sped up inference by ~40x–80x',
+        summary: 'Generating 50 tokens of explanation takes 50 sequential forward passes (~800ms). Scoring the logit of "yes"/"true" vs "no"/"false" at position 1 takes ONE forward pass (12–14ms).',
+        deepDive: `Early TriageMate (<code class="text-indigo-300">triage/prompts.py</code>) asked <code class="text-slate-200">Qwen2.5-Coder-7B</code> to generate 3 lines of text:<br>
+        <code class="text-slate-300">VERDICT: TP or FP / WHY: one sentence / FIX: one sentence</code>.<br><br>
+        In an LLM, generating $N$ output tokens requires running the model $N$ times sequentially (autoregressive decoding), bound by GPU memory bandwidth. In Commit <code class="text-emerald-300">d85a712</code> (<code class="text-indigo-300">triage/decision.py</code>) and Commit <code class="text-emerald-300">5bb181f</code> (<code class="text-emerald-300">d1_triage/engine.py</code>), the architecture switched to <strong>single-pass logit scoring</strong>: feed the prompt once, read the raw vocabulary logits at the final token position for positive vs. negative answer tokens, and apply softmax. Result: <strong>12–14 ms per alert</strong> and continuous calibrated probabilities $P(\\text{TP}) \\in [0, 1]$ for ROC-AUC and P@90R ranking!`,
+        codeExample: `# Single forward pass probability calculation in d1_triage/engine.py
+pos_logit = max(logits[pos_token_ids])  # ["yes", "Yes", "true", "True", "1"]
+neg_logit = max(logits[neg_token_ids])  # ["no", "No", "false", "False", "0"]
+p_tp = math.exp(pos_logit) / (math.exp(pos_logit) + math.exp(neg_logit))
+confidence_pct = abs(p_tp - 0.5) * 200.0`,
+        interviewTip: 'Highlight the dual benefit of single-pass logit scoring: 1) Latency drops from ~800ms to 12ms, and 2) You get a continuous probability score P(TP) so security teams can rank the top 10 alerts rather than getting an unranked pile of binary "TP" strings.'
+      },
+      {
+        id: 'f5',
+        step: '05',
+        title: 'Dense Transformers vs. Liquid AI d1-3B Hybrid SSM',
+        subtitle: 'Why LiquidAI/d1-3B beats Kev-4B in both accuracy and speed',
+        summary: 'LiquidAI/d1-3B is a 3B Hybrid State Space Model (SSM) fine-tuned from LiquidAI/LFM2.5-VL-3B / LFM2.5-2.6B-Base. It uses half the VRAM of 4B dense transformers (6.25 GiB vs 12.8 GB) and runs in 12ms.',
+        deepDive: `Standard Dense Transformers (like <code class="text-amber-300">Kev-4B</code> or <code class="text-amber-300">Qwen-7B</code>) have quadratic $O(L^2)$ attention cost and large KV-cache memory footprints on long code windows.<br><br>
+        <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" target="_blank" rel="noopener noreferrer" class="text-indigo-400 underline">LiquidAI/d1-3B</a> combines linear-scaling State Space / dynamical operators with selective attention layers and a specialized <code class="text-emerald-300">system_one_batch</code> fast-decision head (<code class="text-slate-200">type: "noul"</code> criteria). On 174 real-world GHSA alerts and 126 Vul4J repositories, <code class="text-emerald-300">d1-3B</code> beats <code class="text-amber-300">Kev-4B</code> on L3 Verified Fix Hunks (<strong>0.8372 vs 0.7167 AUC</strong>, +12.05%) and Vul4J Real CVEs (<strong>0.8000 vs 0.6667 AUC</strong>, +13.33%) while running in <strong>12–14 ms on a single Nvidia T4 GPU (6.25 GiB peak VRAM)</strong>.`,
+        codeExample: `# Official LiquidAI/d1-3B system_one_batch API used in benchmark evaluation:
+QUESTIONS = {"tp": {"type": "noul", "instructions": QUESTION, "criteria": CRITERIA}}
+with torch.inference_mode():
+    result = model.system_one_batch([(state, QUESTIONS)])
+p_tp = float(result[0]["answers"]["tp"]["noul"])`,
+        interviewTip: 'Know the exact model lineage from the Hugging Face model tree: Base model LiquidAI/LFM2.5-2.6B-Base -> LiquidAI/LFM2.5-VL-3B -> LiquidAI/d1-3B -> barryallen16/d1-3B-java-vuln-triage.'
+      },
+      {
+        id: 'f6',
+        step: '06',
+        title: 'QLoRA & Real-to-Real Contrastive Fine-Tuning',
+        subtitle: 'How we adapt a 3B/7B model on a single GPU without overfitting',
+        summary: 'QLoRA freezes the base weights in 4-bit NormalFloat and trains small rank-16 adapter matrices. Contrastive tuning trains on paired pre-patch (TP) and post-patch (FP) commits of the exact same method.',
+        deepDive: `In <code class="text-indigo-300">training/train_qlora.py</code>, TriageMate uses <strong>QLoRA</strong> (<code class="text-slate-200">r=16, lora_alpha=16</code>) across all 7 linear projections (<code class="text-slate-200">q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj</code>).<br><br>
+        <strong>Why Contrastive Tuning on 416 Real Pre/Post Patch Pairs (<code class="text-emerald-300">f25eac6</code>) was a breakthrough:</strong> When you train a model on unrelated TP and FP files, it takes shortcuts—memorizing project names, author styles, or which Semgrep rule is more common. When you show the model the <strong>exact same Java method right before a security patch (TP) and right after the developer added the sanitizer patch (FP)</strong>, the rule ID, file name, and variable names are 100% identical! The model is <em>forced</em> to attend to the sanitizer diff, pushing L3 Within-Rule AUC to <strong>0.6594</strong>.`,
+        codeExample: `# Contrastive Pair Example (416 real GitHub security patch pairs):
+# Sample 1 (Pre-Patch Commit -> Label: TP):
+>>> [ALERT LINE 45]: File targetFile = new File(baseDir, userReportName);
+# Sample 2 (Post-Patch Commit -> Label: FP, exact same file & rule!):
+Path normalized = baseDir.toPath().resolve(userReportName).normalize();
+if (!normalized.startsWith(baseDir.toPath())) throw new SecurityException();
+>>> [ALERT LINE 47]: File targetFile = normalized.toFile();`,
+        interviewTip: 'This is your strongest ML design talking point: explain why real pre/post patch pairs eliminate spurious correlations (confounders like rule ID, repo coding style, and variable names).'
+      }
+    ];
+
+    const COMMITS_DATA = [
+      { num: 1, sha: 'b5349cf', date: '2025-07-01', era: 'ERA1', title: 'init repo with lfs', files: '.gitattributes', problem: 'Need to store large benchmark CSVs and model evaluation datasets without bloating Git history.', decision: 'Initialized repository with Git LFS tracking rules in .gitattributes.', consequence: 'Allowed versioning of 1,000-row Juliet and Java vulnerability CSVs cleanly.' },
+      { num: 2, sha: '4a9c773', date: '2025-07-03', era: 'ERA1', title: 'add upstream extracts', files: 'datasets/, scripts/', problem: 'No unified dataset of Java static analysis alerts existed out of the box.', decision: 'Added raw upstream dataset extractions from NIST Juliet Java test suite and static analysis rules.', consequence: 'Created raw corpus foundation, though schemas across sources were still inconsistent.' },
+      { num: 3, sha: 'b47b198', date: '2025-07-06', era: 'ERA1', title: 'standardize raw sources', files: 'datasets/, scripts/', problem: 'Juliet, CWE benchmarks, and scanner outputs used incompatible column names and label encodings.', decision: 'Standardized schema across raw Java vulnerability sources (unified code, CWE, rule, label columns).', consequence: 'Enabled downstream merging of heterogeneous corpora.' },
+      { num: 4, sha: '24ebe88', date: '2025-07-09', era: 'ERA1', title: 'add synthetic samples', files: 'datasets/', problem: 'Certain CWE categories had sparse coverage in raw extracts.', decision: 'Ingested synthetic Java vulnerability snippets and paired safe counterparts.', consequence: 'Increased dataset volume for initial instruction tuning, later found to introduce synthetic distribution bias.' },
+      { num: 5, sha: 'c7d7105', date: '2025-07-10', era: 'ERA1', title: 'save synthetic reasoning trace', files: 'datasets/', problem: 'Instruction-tuned LLMs needed target explanations (WHY and FIX) alongside binary TP/FP labels.', decision: 'Generated and saved ground-truth chain-of-thought reasoning traces and remediation hints.', consequence: 'Provided supervision targets for the 3-line VERDICT / WHY / FIX prompt format.' },
+      { num: 6, sha: 'e9ecd4b', date: '2025-07-20', era: 'ERA1', title: 'merge corpora', files: 'datasets/, model-evaluation/java_vul_dataset.csv', problem: 'Training required a single consolidated dataset combining Juliet, MegaVul, and synthetic cases.', decision: 'Merged all upstream corpora into unified dataset tables.', consequence: 'Produced combined training pool but introduced duplicate or near-duplicate code methods across splits.' },
+      { num: 7, sha: '32b7546', date: '2025-07-27', era: 'ERA1', title: 'dedupe merged set', files: 'scripts/, datasets/', problem: 'Near-identical methods appearing in both train and test splits inflated validation accuracy.', decision: 'Implemented strict content hashing and deduplication across training and validation splits.', consequence: 'Eliminated exact-match train/test contamination.' },
+      { num: 8, sha: '1894b83', date: '2025-07-30', era: 'ERA1', title: 'preprocess with javalang', files: 'triage/dataset.py', problem: 'Feeding entire multi-thousand-line Java classes overflowed LLM context windows and wasted compute.', decision: 'Integrated Python javalang AST parser to locate and slice the enclosing method declaration around the flagged line.', consequence: 'Focused context windows on method-level dataflow and reduced token counts by >75%.' },
+      { num: 9, sha: '6497929', date: '2025-08-10', era: 'ERA1', title: 'build training sets', files: 'datasets/, triage/dataset.py', problem: 'Sliced AST methods needed to be formatted into chat/instruction JSONL records for SFTTrainer.', decision: 'Built automated JSONL generator pairing SYSTEM/INSTRUCTIONS prompts with VERDICT/WHY/FIX targets.', consequence: 'Completed Era 1 data engineering pipeline.' },
+      { num: 10, sha: '092c15a', date: '2025-08-13', era: 'ERA2', title: 'add lora training notebook', files: 'legacy_experiment/', problem: 'Needed rapid iteration on 4-bit QLoRA hyperparameters on free/low-cost T4 GPUs.', decision: 'Added initial QLoRA fine-tuning notebook using Unsloth and bitsandbytes 4-bit quantization.', consequence: 'Verified that 7B coder models could be fine-tuned within 15 GB T4 VRAM.' },
+      { num: 11, sha: '0b4c4b1', date: '2025-08-17', era: 'ERA2', title: 'add eval harness', files: 'training/evaluate_llm.py', problem: 'Manual inspection of model outputs was unscalable and subjective.', decision: 'Created automated evaluation harness parsing VERDICT lines to compute accuracy, precision, recall, and F1.', consequence: 'Standardized model comparison across checkpoints.' },
+      { num: 12, sha: '36a6a10', date: '2025-08-20', era: 'ERA2', title: 'add validation scripts', files: 'triage/verify.py', problem: 'Malformed JSONL rows or missing CWE tags occasionally crashed long training runs.', decision: 'Added automated schema and syntax validation scripts before training launch.', consequence: 'Prevented mid-epoch pipeline failures.' },
+      { num: 13, sha: '9ae9636', date: '2025-08-24', era: 'ERA2', title: 'add raw test cases', files: 'model-evaluation/', problem: 'Needed edge-case Java snippets with complex control flow to stress-test the parser and scorer.', decision: 'Added raw unparsed Java test cases to model-evaluation/.', consequence: 'Exposed edge cases where AST slicing needed fallback windowing.' },
+      { num: 14, sha: '795e5e3', date: '2025-08-26', era: 'ERA2', title: 'record mistral baseline', files: 'model-evaluation/', problem: 'Needed an untuned open-weights LLM baseline to justify fine-tuning.', decision: 'Benchmarked zero-shot Mistral baseline on the Java evaluation set.', consequence: 'Showed off-the-shelf zero-shot generative prompts had poor calibration and high false-positive bias.' },
+      { num: 15, sha: '50d6dcd', date: '2025-08-28', era: 'ERA2', title: 'add final eval notebook', files: 'model-evaluation/testcases_java_eval.ipynb', problem: 'Needed interactive visualization of confusion matrices and error slices by CWE.', decision: 'Created model-evaluation/testcases_java_eval.ipynb (accounting for 58.1% of repo byte size).', consequence: 'Enabled deep qualitative inspection of false positives vs false negatives.' },
+      { num: 16, sha: 'd2163f9', date: '2025-08-30', era: 'ERA2', title: 'save 200 case eval set', files: 'model-evaluation/', problem: 'Running full multi-thousand-sample evaluation took too long during rapid prompt iteration.', decision: 'Extracted a stratified 200-case evaluation subset.', consequence: 'Reduced evaluation turnaround time during model selection.' },
+      { num: 17, sha: 'eda01dd', date: '2025-08-31', era: 'ERA2', title: 'freeze clean eval sets', files: 'model-evaluation/eval-clean-152.csv', problem: 'Some evaluation rows in the 200-case set had ambiguous ground truth or overlap with training templates.', decision: 'Audited and froze a strictly leak-free 152-sample evaluation benchmark (eval-clean-152.csv).', consequence: 'Provided the first trustworthy held-out benchmark for comparing legacy vs new adapters.' },
+      { num: 18, sha: '45da378', date: '2025-09-02', era: 'ERA2', title: 'write readme', files: 'README.md', problem: 'Repository lacked top-level documentation of architecture and setup.', decision: 'Wrote initial README.md describing the QLoRA Java triage workflow.', consequence: 'Established initial project documentation (later archived to notes/ in 4d97897).' },
+      { num: 19, sha: '9b8dbc8', date: '2025-09-03', era: 'ERA2', title: 'ignore derived outputs', files: '.gitignore', problem: 'Local training runs generated gigabytes of checkpoints, wandb logs, and scratch files.', decision: 'Updated .gitignore to exclude derived checkpoints, logs, and temporary artifacts.', consequence: 'Kept repository lightweight and clean.' },
+      { num: 20, sha: '4b560f8', date: '2025-10-20', era: 'ERA3', title: 'reference datasets from hf', files: 'triage/dataset.py, README.md', problem: 'Git LFS bandwidth quotas make cloning large datasets slow and brittle.', decision: 'Migrated large dataset hosting to Hugging Face Hub and referenced HF URLs in code.', consequence: 'Decoupled code repository size from multi-hundred-megabyte training corpora.' },
+      { num: 21, sha: '226b229', date: '2025-10-20', era: 'ERA3', title: 'record juliet 979 over 1000 score', files: 'model-evaluation/juliet-heldout-1000.csv', problem: 'Evaluated fine-tuned model on 1,000 held-out NIST Juliet Java test cases.', decision: 'Recorded 979 / 1,000 (97.9% accuracy) on juliet-heldout-1000.csv.', consequence: 'Triggered immediate skepticism: 97.9% was suspiciously high for static analysis triage, prompting a deep audit for data leakage!' },
+      { num: 22, sha: 'a760204', date: '2025-10-20', era: 'ERA3', title: 'neutralize juliet name leaks', files: 'scripts/, triage/dataset.py', problem: 'CRITICAL DISCOVERY: NIST Juliet names methods goodG2B(), goodB2G(), and bad(), and includes CWE numbers in class/file names! The LLM was achieving 97.9% by reading method names instead of analyzing code flow.', decision: 'Wrote identifier neutralization pipeline stripping good/bad/CWE tokens and replacing them with neutral identifiers (e.g., func_a, case_1).', consequence: 'Exposed the "Juliet Illusion" and prevented models from cheating via lexical identifier shortcuts.' },
+      { num: 23, sha: 'e48e301', date: '2025-10-20', era: 'ERA3', title: 'flag juliet name leak, add neutral set', files: 'model-evaluation/juliet-heldout-1000-neutral.csv, juliet-heldout-1000-neutral-v2.csv', problem: 'Needed permanent benchmark artifacts proving the impact of identifier leakage before and after neutralization.', decision: 'Generated and committed juliet-heldout-1000-neutral.csv and v2 with all lexical leaks scrubbed.', consequence: 'Created a textbook case study in ML security evaluation integrity.' },
+      { num: 24, sha: '2c57da8', date: '2025-10-20', era: 'ERA3', title: 'Add apache-2.0 license', files: 'LICENSE', problem: 'Open-source release required formal permissive licensing.', decision: 'Added standard Apache License 2.0.', consequence: 'Cleared legal adoption for enterprise and academic users.' },
+      { num: 25, sha: '14f6e76', date: '2025-10-21', era: 'ERA4', title: 'add triage dataset pipeline and training scripts', files: 'triage/dataset.py, triage/prompts.py, training/train_qlora.py, training/launch.py', problem: 'Code was previously scattered across notebooks; needed modular, testable Python packages.', decision: 'Created structured triage/ and training/ packages with clean CLI entry points.', consequence: 'Transformed experimental notebooks into a reproducible software engineering repo.' },
+      { num: 26, sha: '7afb7ec', date: '2025-10-21', era: 'ERA4', title: 'harden remote scripts and add error sampler', files: 'training/errors.py, training/runner.py', problem: 'Remote GPU training jobs on Kaggle/cloud instances failed silently or lost false-positive examples.', decision: 'Added structured exception handling in training/runner.py and an error sampler in training/errors.py to log misclassified alerts.', consequence: 'Made remote training resilient and automated hard-negative error analysis.' },
+      { num: 27, sha: '3678145', date: '2025-10-21', era: 'ERA4', title: 'fix t4 training precision and release sample set', files: 'training/train_qlora.py', problem: 'NVIDIA T4 GPUs (Turing architecture, compute capability 7.5) do NOT natively support bfloat16, causing crashes or slow emulation.', decision: 'Added automatic hardware capability check to use fp16 on T4 GPUs and bfloat16 only on Ampere+ (A100/L4).', consequence: 'Eliminated T4 precision crashes and stabilized QLoRA training throughput.' },
+      { num: 28, sha: '0772aa7', date: '2025-10-22', era: 'ERA4', title: 'host data on huggingface and harden runner', files: 'training/runner.py, triage/dataset.py', problem: 'Remote workers needed zero-config dataset fetching with checksum/retry safety.', decision: 'Automated Hugging Face dataset pulling inside training/runner.py.', consequence: 'Enabled one-command remote reproduction.' },
+      { num: 29, sha: '4ab601c', date: '2025-10-22', era: 'ERA4', title: 'document data hosting', files: 'docs/, triage/data_sheet.py', problem: 'Users needed clear documentation of dataset splits, schemas, and provenance.', decision: 'Added data hosting docs and triage/data_sheet.py (Gebru et al. Datasheets for Datasets style).', consequence: 'Improved dataset transparency and reproducibility.' },
+      { num: 30, sha: '6d3438b', date: '2025-10-22', era: 'ERA4', title: 'keep kaggle outputs small', files: 'training/train_qlora.py, training/clean_legacy.py', problem: 'Kaggle disks have strict 20 GB output limits; saving full optimizer states every step exhausted disk space.', decision: 'Configured LoRA-adapter-only checkpointing and added training/clean_legacy.py to prune intermediate states.', consequence: 'Prevented disk-full crashes on cloud notebooks.' },
+      { num: 31, sha: '26de247', date: '2025-10-22', era: 'ERA4', title: 'read results from logs', files: 'training/report.py', problem: 'Comparing metrics across multiple training epochs and seeds required manual log scraping.', decision: 'Built training/report.py to parse trainer logs and emit Markdown comparison tables automatically.', consequence: 'Automated experiment reporting.' },
+      { num: 32, sha: '84726c7', date: '2025-10-22', era: 'ERA4', title: 'score old adapter on leak-free set', files: 'training/evaluate_llm.py, model-evaluation/', problem: 'Needed to measure how the earlier Juliet-trained adapter performed on leak-free data (eval-clean-152.csv and neutralized Juliet).', decision: 'Evaluated legacy LoRA adapter on the leak-free sets.', consequence: 'Proved quantitatively that removing identifier leaks caused a sharp performance drop on legacy adapters.' },
+      { num: 33, sha: 'bdbf006', date: '2025-10-22', era: 'ERA4', title: 'fix precision at recall and keep data in scratch', files: 'triage/metrics.py', problem: 'Security teams care about Precision at 90% Recall (P@90R)—how much noise remains when you catch 90% of real bugs—but threshold boundary indexing had an off-by-one edge case.', decision: 'Fixed P@90R threshold sweep in triage/metrics.py and isolated scratch downloads.', consequence: 'Guaranteed mathematically exact P@90R and ECE metric calculations.' },
+      { num: 34, sha: 'c555ce1', date: '2025-10-22', era: 'ERA4', title: 'report legacy score', files: 'training/report.py, notes/', problem: 'Needed honest side-by-side reporting of leaked vs leak-free benchmark scores.', decision: 'Published legacy vs neutralized benchmark tables in repository documentation.', consequence: 'Established scientific honesty as a core feature of the repo.' },
+      { num: 35, sha: 'e68b711', date: '2025-10-22', era: 'ERA4', title: 'drop unused import', files: 'triage/', problem: 'Linter flagged unused imports in triage package.', decision: 'Removed unreferenced imports.', consequence: 'Cleaner module namespace and faster import times.' },
+      { num: 36, sha: '4d97897', date: '2025-10-22', era: 'ERA4', title: 'keep old readme as legacy notes', files: 'notes/', problem: 'As the architecture evolved beyond naive Juliet QLoRA, the original README needed to be preserved as historical context without confusing new users.', decision: 'Archived original README into notes/ as an engineering lab notebook.', consequence: 'Preserved full experimental trail for auditors and interviewers.' },
+      { num: 37, sha: '60de2ab', date: '2025-10-22', era: 'ERA4', title: 'fix eval labels and report scoping', files: 'triage/verify.py, training/report.py', problem: 'Label string casing/indexing mismatch in verify.py affected subset reporting.', decision: 'Normalized TP/FP label mapping and scoping in triage/verify.py.', consequence: 'Eliminated silent label inversion bugs during evaluation.' },
+      { num: 38, sha: '8bacd63', date: '2025-10-23', era: 'ERA4', title: 'report triage results', files: 'audit/', problem: 'Needed structured audit artifacts recording evaluation runs.', decision: 'Exported comprehensive evaluation tables to audit/.', consequence: 'Created verifiable audit trail.' },
+      { num: 39, sha: '5757f90', date: '2025-10-24', era: 'ERA4', title: 'explain adapter unzip', files: 'docs/, README.md', problem: 'Users downloading zipped LoRA adapters from Hugging Face/Kaggle needed extraction instructions.', decision: 'Documented adapter extraction and loading steps.', consequence: 'Smoother onboarding for external evaluators.' },
+      { num: 40, sha: 'dcde8f6', date: '2025-10-24', era: 'ERA4', title: 'just update readme', files: 'README.md', problem: 'Setup commands in README needed updating for the new package layout.', decision: 'Updated CLI usage and installation snippets.', consequence: 'Kept documentation aligned with code.' },
+      { num: 41, sha: 'c5afb9c', date: '2025-10-24', era: 'ERA4', title: 'add tests for metrics and dataset modules', files: 'tests/test_metrics.py, tests/test_dataset.py, tests/test_prompts.py', problem: 'Core metric math (P@90R, ECE) and AST dataset slicing lacked automated unit test coverage.', decision: 'Added pytest suite covering metrics, dataset AST slicing, and prompt formatting.', consequence: 'Locked in correctness of metric formulas and dataset transformations.' },
+      { num: 42, sha: '55b32e8', date: '2025-10-24', era: 'ERA4', title: 'humanize readme prose', files: 'README.md', problem: 'Documentation read too much like a dry log; needed clear narrative flow.', decision: 'Rewrote README prose to clearly explain the problem, leaks discovered, and architecture.', consequence: 'Made repository story immediately compelling to readers.' },
+      { num: 43, sha: '53fca4f', date: '2025-10-24', era: 'ERA4', title: 'point hf urls at triagemate dataset repo', files: 'triage/dataset.py, README.md', problem: 'Dataset URLs pointed to temporary repositories.', decision: 'Standardized all Hugging Face URLs to canonical triagemate dataset endpoints.', consequence: 'Consistent data resolution across scripts.' },
+      { num: 44, sha: '5e4d8b8', date: '2025-10-24', era: 'ERA4', title: 'document legacy experiment and gitignore generated outputs', files: '.gitignore, legacy_experiment/', problem: 'Needed clear separation between active production code and historical experiments.', decision: 'Documented legacy experiments and updated .gitignore for generated audit files.', consequence: 'Clear boundary between legacy research and current engine.' },
+      { num: 45, sha: '914f99d', date: '2025-10-24', era: 'ERA4', title: 'move unreferenced legacy training scripts to legacy_experiment', files: 'legacy_experiment/', problem: 'Old scripts cluttered the top-level workspace.', decision: 'Moved superseded training scripts into legacy_experiment/.', consequence: 'Kept active packages (triage/, d1_triage/, training/) focused and maintainable.' },
+      { num: 46, sha: '0d1125d', date: '2025-10-24', era: 'ERA4', title: 'add cli and prompt tests', files: 'tests/test_cli.py, tests/test_decision.py, tests/test_explain.py, tests/test_scan_ids.py, tests/test_verify.py', problem: 'CLI entrypoint, decision scorer, explanation generator, and scan IDs needed full pytest coverage.', decision: 'Added comprehensive unit tests across all remaining modules in tests/.', consequence: 'Achieved complete unit test coverage across the triage/ package.' },
+      { num: 47, sha: '645bd4c', date: '2025-10-24', era: 'ERA4', title: 'reframe codebert vs qlora as product tradeoff', files: 'Dockerfile, pyproject.toml, uv.lock, README.md', problem: 'Needed reproducible containerization and explicit analysis of small encoder (CodeBERT) vs LLM (QLoRA) latency/accuracy tradeoffs.', decision: 'Added Dockerfile (python:3.12-slim + openjdk-17-headless + semgrep + uv sync --frozen) and documented model size vs accuracy tradeoffs.', consequence: 'Made TriageMate deployable as a single Docker container with deterministic uv lockfiles.' },
+      { num: 48, sha: '8cedcaa', date: '2025-10-31', era: 'ERA5', title: 'add megavul retrain results, partial transfer finding on vul4j', files: 'notes/, model-evaluation/', problem: 'Tested whether training on real C/C++/Java CVEs from MegaVul transferred to Semgrep alerts on real Vul4J Java repositories.', decision: 'Retrained on MegaVul and evaluated zero-shot transfer on Vul4J Semgrep findings.', consequence: 'Crucial finding: only PARTIAL transfer! Function-level vulnerability datasets (MegaVul) do not teach a model how to judge whether a specific Semgrep rule sink is reachable.' },
+      { num: 49, sha: 'da27f03', date: '2025-10-31', era: 'ERA5', title: 'update readme', files: 'README.md', problem: 'README needed to reflect the MegaVul-to-Vul4J partial transfer findings.', decision: 'Updated README with cross-domain transfer analysis.', consequence: 'Documented why function-level CVE classification differs from scanner alert triage.' },
+      { num: 50, sha: 'd85a712', date: '2026-10-29', era: 'ERA5', title: 'feat(engine): add vul4j scan pipeline and deterministic decision scorer', files: 'triage/cli.py, triage/decision.py', problem: 'Autoregressive text generation was slow and noisy on real Vul4J Semgrep scans.', decision: 'Built deterministic single-pass logit scorer (DecisionScorer in triage/decision.py using Qwen/Qwen3.5-4B rev 851bf6e8) scoring bounded TP vs FP options directly.', consequence: 'Eliminated text generation parsing failures and established single-pass probability scoring.' },
+      { num: 51, sha: '892e47d', date: '2026-10-31', era: 'ERA6', title: 'feat(benchmarks): add ghsa real-world benchmark, patch ground truth, and adjudication', files: 'datasets/ghsa-eval/, datasets/vul4j-eval/, audit/', problem: 'Existing benchmarks lacked multi-tier ground truth separating noisy file overlap from verified CWE-matching fix hunks.', decision: 'Constructed the 174-alert GHSA benchmark across 68 advisories + 126-repo Vul4J census with 3-tier adjudication gates: L0 (location proxy), L2 (stored + CWE), and L3 (verified fix hunk + CWE).', consequence: 'Revealed that unanchored zero-shot models had high Global AUC (0.8372 L3) but terrible Within-Rule AUC (0.4297 L0)!' },
+      { num: 52, sha: 'f25eac6', date: '2026-10-31', era: 'ERA6', title: 'feat(model): add d1-3b contrastive lora training, swap controls, and evaluation suite', files: 'd1_triage/sink_finder.py, training/, audit/', problem: 'Zero-shot d1-3B suffered from 0.4297 within-rule AUC due to source line number disconnect (it did not know which line in the snippet was the flagged sink).', decision: '1) Introduced statement-level sink grounding (>>> [ALERT LINE n]) in sink_finder.py; 2) Fine-tuned LiquidAI/d1-3B with contrastive LoRA on 416 real pre/post patch pairs; 3) Added paired rule-swap controls.', consequence: 'Within-rule AUC jumped from 0.4297 to 0.5986 (L0) and 0.6321 (L2) via prompting alone, and 0.6594 (L3) with contrastive LoRA! Rule-swap delta (+0.0749 L0, +0.1106 L3) proved real code dataflow inspection.' },
+      { num: 53, sha: '5bb181f', date: '2026-10-31', era: 'ERA6', title: 'feat(cli): add d1-triage developer tool and benchmark leaderboard', files: 'd1_triage.py, d1_triage/cli.py, d1_triage/engine.py, d1_triage/formatters.py, d1_triage/sink_finder.py', problem: 'Developers needed a standalone, sub-15ms CLI tool with Rich terminal tables, JSON export, --demo, --scan, --benchmark, and --mock modes.', decision: 'Created the production d1_triage package and top-level d1_triage.py entrypoint powered by LiquidAI/d1-3B.', consequence: 'Delivered 12–14ms GPU triage (6.25 GiB VRAM) and instant CI dry-runs via --mock.' },
+      { num: 54, sha: 'a6fb3fe', date: '2026-10-31', era: 'ERA6', title: 'docs: streamline readme and purge legacy audit scratchpads', files: 'README.md, docs/TECHNICAL_REPORT.md, audit/', problem: 'Final release needed a crisp, executive-ready README and zero-dependency reproducibility scripts without temporary scratchpads.', decision: 'Streamlined README.md with the full benchmark leaderboard, architecture diagram, and quickstart commands, and finalized audit/evaluate_d1.py + audit/test_whole_suite.py.', consequence: 'Current HEAD of main: clean, reproducible in <0.2s on CPU, and interview-ready.' }
+    ];
+
+    const ENTRY_POINTS_DATA = [
+      {
+        id: 'ep1',
+        badge: 'Primary Production CLI',
+        title: '1. d1_triage.py & d1_triage/__main__.py',
+        cmd: 'python d1_triage.py --scan semgrep.json -o report.json',
+        target: 'd1_triage/cli.py -> main()',
+        purpose: 'The flagship sub-15ms developer CLI tool added in commit 5bb181f. Supports --demo, --scan <semgrep.json>, --benchmark {ghsa,vul4j} --limit N, --cpu, --gpu, --mock, --threshold 0.5, and --output.',
+        flowSteps: [
+          '1. d1_triage.py (or python -m d1_triage) invokes d1_triage.cli.main().',
+          '2. argparse parses flags (--demo, --scan, --benchmark, --mock, --cpu, --threshold).',
+          '3. Input Loader: load_semgrep_json(path) parses Semgrep results[] array OR load_benchmark_sample() reads JSONL from datasets/ghsa-eval or datasets/vul4j-eval OR loads built-in demo cases.',
+          '4. Instantiates D1TriageEngine(use_cpu=..., mock_mode=..., model_name="LiquidAI/d1-3B").',
+          '5. For each TriageFinding: calls sink_finder.find_sink_line(code_window, rule, line_number) and build_annotated_prompt() to insert >>> [ALERT LINE n]: on the sink statement.',
+          '6. Runs single forward pass (or deterministic heuristic in --mock mode), extracts pos_logit vs neg_logit, computes P(TP) = exp(pos)/(exp(pos)+exp(neg)) and confidence_pct = |P(TP)-0.5|*200.',
+          '7. Calls generate_explanation() for rule-specific taint rationale and formats output via d1_triage/formatters.py (Rich Table/Panel + export_json_results).'
+        ]
+      },
+      {
+        id: 'ep2',
+        badge: 'Installed Package Script',
+        title: '2. pyproject.toml [project.scripts] triagemate',
+        cmd: 'triagemate /path/to/java/repo --scorer decision --json out.json',
+        target: 'triage/cli.py -> main()',
+        purpose: 'End-to-end repository scanner & scorer registered in pyproject.toml as triagemate = "triage.cli:main". Can invoke Semgrep directly on a target directory and score findings with 3 pluggable backends.',
+        flowSteps: [
+          '1. Invoking `triagemate <path>` calls triage/cli.py:main().',
+          '2. If <path> is a directory, run_semgrep(target_dir, out_json) runs subprocess `semgrep` to produce a raw JSON scan file.',
+          '3. findings_from(scan_json, root) extracts rule ID, CWE, file path, line number, message, and slices the surrounding Java source code window.',
+          '4. Selects scorer based on `--scorer {model, decision, heuristic}`:',
+          '   • `decision`: Uses DecisionScorer (triage/decision.py) with Qwen/Qwen3.5-4B single-pass option logit scoring.',
+          '   • `model`: Uses ModelScorer with Unsloth FastLanguageModel (unsloth/Qwen2.5-Coder-7B-Instruct-bnb-4bit + optional LoRA --adapter) using 3-line prompt from triage/prompts.py.',
+          '   • `heuristic`: Uses heuristic_score(row) baseline based on scanner rule severity.',
+          '5. Attaches remediation hints from triage/explain.py (FIX_HINTS by CWE) and outputs ranked findings.'
+        ]
+      },
+      {
+        id: 'ep3',
+        badge: 'Container Runtime',
+        title: '3. Dockerfile ENTRYPOINT ["triagemate"]',
+        cmd: 'docker build -t triagemate . && docker run --rm triagemate --help',
+        target: 'Dockerfile -> /app/.venv/bin/triagemate',
+        purpose: 'Reproducible containerized execution environment built on python:3.12-slim with OpenJDK 17, Semgrep CLI, and deterministic uv.lock dependencies.',
+        flowSteps: [
+          '1. Base image `python:3.12-slim` installs `openjdk-17-headless` (for Java tooling) and `semgrep` via apt-get.',
+          '2. Copies `pyproject.toml` and `uv.lock` into `/app` and runs `uv sync --frozen --no-cache` for bit-for-bit reproducible Python dependencies.',
+          '3. Copies `triage/` and `training/` into `/app` and prepends `/app/.venv/bin` to `PATH`.',
+          '4. Sets `ENTRYPOINT ["triagemate"]`, routing container arguments directly to `triage.cli:main`.'
+        ]
+      },
+      {
+        id: 'ep4',
+        badge: 'HF Python SDK Entry',
+        title: '4. LiquidAI/d1-3B system_one_batch Python API',
+        cmd: 'model.system_one_batch([(state, QUESTIONS)])',
+        target: 'transformers.AutoModel.from_pretrained("LiquidAI/d1-3B")',
+        purpose: 'Direct Python SDK integration using Liquid AI’s custom remote code (`trust_remote_code=True`) and `noul` criteria scoring head.',
+        flowSteps: [
+          '1. Loads `AutoModel.from_pretrained("LiquidAI/d1-3B", trust_remote_code=True, torch_dtype=torch.float16).cuda()`.',
+          '2. Defines `QUESTION` (taint reachability instruction) and `CRITERIA` (`"true"` vs `"false"` taint definitions) wrapped in `QUESTIONS = {"tp": {"type": "noul", ...}}`.',
+          '3. Formats `state` string containing `Rule:`, `CWE:`, `File:`, `Flagged Line:`, and Java block with `>>> [ALERT LINE n]:` marker.',
+          '4. Executes `model.system_one_batch([(state, QUESTIONS)])` inside `torch.inference_mode()` and reads `float(result[0]["answers"]["tp"]["noul"])`.'
+        ]
+      },
+      {
+        id: 'ep5',
+        badge: 'Training & Sweep Pipeline',
+        title: '5. training/launch.py, runner.py & train_qlora.py',
+        cmd: 'python -m training.launch --config ... / python training/train_qlora.py',
+        target: 'training/train_qlora.py & training/evaluate_llm.py',
+        purpose: 'Multi-GPU / cloud training orchestration pipeline for QLoRA fine-tuning (r=16, alpha=16), T4 fp16 fallback, error sampling, and Markdown report generation.',
+        flowSteps: [
+          '1. `training/launch.py` and `training/runner.py` orchestrate experiment runs and pull datasets from Hugging Face Hub (`0772aa7`).',
+          '2. `triage/dataset.py` parses Java methods via `javalang` AST and builds instruction-tuning JSONL datasets.',
+          '3. `training/train_qlora.py` loads base model in 4-bit via Unsloth/bitsandbytes, attaches LoRA adapters (`q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj`), selects fp16 on T4 (`3678145`), and runs `SFTTrainer` / contrastive tuning.',
+          '4. `training/evaluate_llm.py` runs inference on held-out sets (`eval-clean-152.csv`, GHSA, Vul4J), logs hard errors via `training/errors.py`, and `training/report.py` compiles Markdown tables.'
+        ]
+      },
+      {
+        id: 'ep6',
+        badge: 'Zero-Dep Audit & Pytest',
+        title: '6. audit/evaluate_d1.py & pytest Suite',
+        cmd: 'python audit/evaluate_d1.py && python audit/test_whole_suite.py && pytest',
+        target: 'audit/evaluate_d1.py & tests/test_*.py',
+        purpose: 'Instant (<0.2s CPU) reproduction of all benchmark numbers (L0/L2/L3 Global AUC, Within-Rule AUC, P@90R, Rule-Swap Delta) using only Python + NumPy, plus 8 pytest unit test modules.',
+        flowSteps: [
+          '1. `python audit/evaluate_d1.py` loads stored prediction logits/probabilities and ground-truth labels (L0, L2, L3, Vul4J) and computes exact ROC-AUC, Within-Rule AUC, P@90R, and Rule-Swap Deltas with zero GPU required.',
+          '2. `python audit/test_whole_suite.py` runs 19 end-to-end integrity assertions verifying every number reported in README.md and TECHNICAL_REPORT.md.',
+          '3. `pytest` runs 8 unit test files in `tests/` (`test_cli.py`, `test_dataset.py`, `test_decision.py`, `test_explain.py`, `test_metrics.py`, `test_prompts.py`, `test_scan_ids.py`, `test_verify.py`).'
+        ]
+      }
+    ];
+
+    const FILE_TREE_DATA = [
+      {
+        path: 'd1_triage.py',
+        group: 'Root & Config',
+        role: 'Top-level CLI executable wrapper for the Liquid AI d1-3B fast triage tool.',
+        details: 'Imports `main` from `d1_triage.cli` and executes it. Designed so developers can run `python d1_triage.py --demo` or `python d1_triage.py --scan semgrep.json` directly from the repo root.'
+      },
+      {
+        path: 'pyproject.toml & uv.lock',
+        group: 'Root & Config',
+        role: 'Python package definition, dependency specification, and console script registration.',
+        details: 'Defines package `triagemate` (v0.1.0, Python >=3.10). Core deps: `javalang>=0.13`, `numpy`, `scikit-learn`, `pytest>=8`. Optional `[model]` deps: `torch`, `transformers`, `peft`, `bitsandbytes`, `unsloth`. Registers CLI script `triagemate = "triage.cli:main"`.'
+      },
+      {
+        path: 'Dockerfile',
+        group: 'Root & Config',
+        role: 'Production container definition bundling Python 3.12, OpenJDK 17, Semgrep, and uv.',
+        details: 'Uses `python:3.12-slim`, installs `openjdk-17-headless` and `semgrep`, runs `uv sync --frozen --no-cache`, copies `triage/` and `training/`, and sets `ENTRYPOINT ["triagemate"]`.'
+      },
+      {
+        path: 'd1_triage/sink_finder.py',
+        group: 'd1_triage/ (Primary Engine)',
+        role: 'Rule-aware regex sink line locator and statement-level prompt annotator (`>>> [ALERT LINE n]`).',
+        details: 'Maps Semgrep rule families (`path-traversal`, `formatted-sql-string`, `object-deserialization`, `unrestricted-request-mapping`, `script-engine-injection`, `crlf-injection-logs`, `documentbuilderfactory`, `unencrypted-socket`) to Java sink regexes. `find_sink_line()` locates the exact sink statement (falling back to reported line number), and `build_annotated_prompt()` prefixes that line with `>>> [ALERT LINE {n}]: ` while indenting other lines by 4 spaces.'
+      },
+      {
+        path: 'd1_triage/engine.py',
+        group: 'd1_triage/ (Primary Engine)',
+        role: 'LiquidAI/d1-3B single-pass inference engine, logit softmax calculator, and rule-aware explanation generator.',
+        details: 'Defines `TriageFinding` and `TriageResult` dataclasses and `D1TriageEngine`. Computes `pos_logit = max(logits[pos_ids])` and `neg_logit = max(logits[neg_ids])`, converts to `p_tp = exp(pos)/(exp(pos)+exp(neg))`, calculates `confidence_pct = |p_tp - 0.5| * 200`, and generates human-readable security explanations via `generate_explanation()`.'
+      },
+      {
+        path: 'd1_triage/cli.py',
+        group: 'd1_triage/ (Primary Engine)',
+        role: 'Command-line interface parser and workflow coordinator for d1_triage.',
+        details: 'Implements `load_semgrep_json()`, `load_benchmark_sample()` (for `ghsa` and `vul4j` JSONL files), and `main()` handling `--demo`, `--scan`, `--benchmark`, `--limit`, `--cpu`, `--gpu`, `--mock`, `--threshold`, `--output`, and `--model`.'
+      },
+      {
+        path: 'd1_triage/formatters.py',
+        group: 'd1_triage/ (Primary Engine)',
+        role: 'Rich terminal UI table/panel renderer and structured JSON exporter.',
+        details: 'Renders color-coded TP/FP badges, confidence percentages, latency metrics, and sink statements using `rich.table.Table` and `rich.panel.Panel`, and exports machine-readable triage reports via `export_json_results()`.'
+      },
+      {
+        path: 'triage/cli.py',
+        group: 'triage/ (Core Package)',
+        role: 'Multi-backend CLI supporting Semgrep execution + model/decision/heuristic scoring.',
+        details: 'Implements `run_semgrep()`, `findings_from()`, `ModelScorer` (Unsloth 4-bit Qwen2.5-Coder-7B), `heuristic_score()`, and dispatches to `DecisionScorer` (`triage/decision.py`).'
+      },
+      {
+        path: 'triage/decision.py',
+        group: 'triage/ (Core Package)',
+        role: 'Deterministic single-pass option logit scorer using Qwen/Qwen3.5-4B.',
+        details: 'Pins `MODEL = "Qwen/Qwen3.5-4B"` (`REVISION = "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"`). `state_of(row)` formats rule, CWE, file:line, message, and code window (truncated to `MAX_CHARS = 4000`), and `DecisionScorer` computes single-pass probability over `TP` vs `FP` options.'
+      },
+      {
+        path: 'triage/dataset.py',
+        group: 'triage/ (Core Package)',
+        role: 'Java AST method extractor (`javalang`) and Hugging Face dataset builder.',
+        details: 'Parses Java source code into ASTs via `javalang`, extracts the enclosing method around an alert line number, neutralizes identifier leaks, and serializes JSONL splits.'
+      },
+      {
+        path: 'triage/prompts.py & triage/explain.py',
+        group: 'triage/ (Core Package)',
+        role: 'Prompt templates (`VERDICT`/`WHY`/`FIX`) and CWE-specific remediation knowledge base.',
+        details: '`prompts.py` defines the 3-line reviewer system prompt and `MAX_CHARS`. `explain.py` maintains `FIX_HINTS` mapping CWE-22, CWE-74, CWE-77, CWE-78, CWE-79, CWE-89, CWE-611 to concrete Java remediation patterns.'
+      },
+      {
+        path: 'triage/metrics.py & triage/verify.py',
+        group: 'triage/ (Core Package)',
+        role: 'Evaluation metrics (P@90R, ECE, Within-Rule AUC, ROC-AUC) and dataset/label verification.',
+        details: '`metrics.py` implements Precision at 90% Recall (`P@90R`), Expected Calibration Error (`ECE` across 10 bins), and per-rule ROC-AUC. `verify.py` validates dataset integrity and label consistency.'
+      },
+      {
+        path: 'training/train_qlora.py & evaluate_llm.py',
+        group: 'training/ (ML Pipeline)',
+        role: 'QLoRA fine-tuning script (r=16, alpha=16) and checkpoint evaluator.',
+        details: 'Configures 4-bit quantization, attaches LoRA adapters to all 7 attention/MLP modules, handles T4 fp16 vs Ampere bf16 precision (`3678145`), and evaluates trained adapters on clean held-out benchmarks.'
+      },
+      {
+        path: 'audit/ & docs/TECHNICAL_REPORT.md',
+        group: 'Audit, Eval & Tests',
+        role: 'Zero-dependency benchmark reproduction suite and 4-level gate audit report.',
+        details: '`audit/evaluate_d1.py` and `audit/test_whole_suite.py` verify all L0/L2/L3 Global AUC, Within-Rule AUC, and Rule-Swap Delta metrics in <0.2s on CPU. `docs/TECHNICAL_REPORT.md` documents the full experimental matrix.'
+      },
+      {
+        path: 'tests/test_*.py (8 files)',
+        group: 'Audit, Eval & Tests',
+        role: 'Complete unit test suite for CLI, AST dataset, decision scorer, explanations, metrics, prompts, scan IDs, and verifier.',
+        details: 'Contains `test_cli.py`, `test_dataset.py`, `test_decision.py`, `test_explain.py`, `test_metrics.py`, `test_prompts.py`, `test_scan_ids.py`, and `test_verify.py`.'
+      }
+    ];
+
+    const SCENARIOS_DATA = [
+      {
+        id: 'sc1',
+        name: '1. Path Traversal (CWE-22) — True Positive',
+        rule: 'java.lang.security.audit.path-traversal',
+        cwe: 'CWE-22',
+        file: 'FileServer.java',
+        line: 45,
+        groundTruth: 'TP',
+        posLogit: 4.35,
+        negLogit: 1.15,
+        rawCode: `public File getRequestedReport(String userReportName) {
+    File baseDir = new File("/var/reports");
+    File targetFile = new File(baseDir, userReportName);
+    return targetFile;
+}`,
+        annotatedCode: `    public File getRequestedReport(String userReportName) {
+        File baseDir = new File("/var/reports");
+>>> [ALERT LINE 45]: File targetFile = new File(baseDir, userReportName);
+        return targetFile;
+    }`,
+        sinkRegexMatched: 'r"new\\s+File\\(" under key "path-traversal"',
+        sinkStatement: 'File targetFile = new File(baseDir, userReportName);',
+        explanation: 'Untrusted parameter `userReportName` flows directly into `new File(baseDir, userReportName)` at line 45 without canonical path normalization (`getCanonicalPath().startsWith(...)`) or filename allowlisting, allowing `../../etc/passwd` traversal.'
+      },
+      {
+        id: 'sc2',
+        name: '2. Path Traversal Sanitized (CWE-22) — False Positive',
+        rule: 'java.lang.security.audit.path-traversal',
+        cwe: 'CWE-22',
+        file: 'ReportDownloadController.java',
+        line: 62,
+        groundTruth: 'FP',
+        posLogit: 0.85,
+        negLogit: 3.90,
+        rawCode: `public Path loadSafeReport(Path baseDir, String requestedFile) throws IOException {
+    Path resolved = baseDir.resolve(requestedFile).normalize();
+    if (!resolved.startsWith(baseDir.normalize())) {
+        throw new SecurityException("Path traversal attempt blocked");
+    }
+    return Files.readAllBytes(resolved) != null ? resolved : null;
+}`,
+        annotatedCode: `    public Path loadSafeReport(Path baseDir, String requestedFile) throws IOException {
+>>> [ALERT LINE 62]: Path resolved = baseDir.resolve(requestedFile).normalize();
+        if (!resolved.startsWith(baseDir.normalize())) {
+            throw new SecurityException("Path traversal attempt blocked");
+        }
+        return Files.readAllBytes(resolved) != null ? resolved : null;
+    }`,
+        sinkRegexMatched: 'Fallback / path resolution check on line 62',
+        sinkStatement: 'Path resolved = baseDir.resolve(requestedFile).normalize();',
+        explanation: 'Although `baseDir.resolve(requestedFile)` is flagged by the static pattern rule, the path is immediately canonicalized with `.normalize()` and guarded by `if (!resolved.startsWith(baseDir.normalize())) throw new SecurityException(...)` before any file read occurs.'
+      },
+      {
+        id: 'sc3',
+        name: '3. SQL Injection (CWE-89) — True Positive',
+        rule: 'java.lang.security.audit.formatted-sql-string',
+        cwe: 'CWE-89',
+        file: 'OrderLookupDao.java',
+        line: 88,
+        groundTruth: 'TP',
+        posLogit: 4.80,
+        negLogit: 0.90,
+        rawCode: `public ResultSet findOrdersByCustomer(Connection conn, String customerFilter) throws SQLException {
+    Statement stmt = conn.createStatement();
+    String sql = "SELECT * FROM orders WHERE customer_name = '" + customerFilter + "'";
+    return stmt.executeQuery(sql);
+}`,
+        annotatedCode: `    public ResultSet findOrdersByCustomer(Connection conn, String customerFilter) throws SQLException {
+        Statement stmt = conn.createStatement();
+        String sql = "SELECT * FROM orders WHERE customer_name = '" + customerFilter + "'";
+>>> [ALERT LINE 88]: return stmt.executeQuery(sql);
+    }`,
+        sinkRegexMatched: 'r"executeQuery\\(" under key "formatted-sql-string"',
+        sinkStatement: 'return stmt.executeQuery(sql);',
+        explanation: 'Unvalidated string `customerFilter` is concatenated directly into a raw SQL query executed via `stmt.executeQuery(sql)` at line 88 instead of using a parameterized `PreparedStatement` with `?` bind variables.'
+      },
+      {
+        id: 'sc4',
+        name: '4. XXE DocumentBuilder (CWE-611) — False Positive',
+        rule: 'java.lang.security.audit.documentbuilderfactory-xxe',
+        cwe: 'CWE-611',
+        file: 'XmlConfigParser.java',
+        line: 31,
+        groundTruth: 'FP',
+        posLogit: 1.10,
+        negLogit: 3.65,
+        rawCode: `public Document parseXmlSafely(InputStream xmlStream) throws Exception {
+    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+    dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+    dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+    DocumentBuilder builder = dbf.newDocumentBuilder();
+    return builder.parse(xmlStream);
+}`,
+        annotatedCode: `    public Document parseXmlSafely(InputStream xmlStream) throws Exception {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        dbf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
+>>> [ALERT LINE 31]: DocumentBuilder builder = dbf.newDocumentBuilder();
+        return builder.parse(xmlStream);
+    }`,
+        sinkRegexMatched: 'r"newDocumentBuilder\\(" under key "documentbuilderfactory"',
+        sinkStatement: 'DocumentBuilder builder = dbf.newDocumentBuilder();',
+        explanation: 'While Semgrep flags `dbf.newDocumentBuilder()`, external DTDs and DOCTYPE declarations are explicitly disabled on lines 29–30 via `disallow-doctype-decl = true` and `FEATURE_SECURE_PROCESSING`, neutralizing XXE.'
+      }
+    ];
+
+    const PIVOTS_DATA = [
+      {
+        num: 'Pivot 01',
+        commits: '226b229 → a760204 → e48e301 → 84726c7',
+        title: 'The Juliet 97.9% Illusion & Identifier Name Leak Crisis',
+        problem: 'In Commit 226b229, the QLoRA model scored 979/1,000 (97.9%) on the NIST Juliet held-out set. Instead of celebrating, the author audited why the score was so high.',
+        decision: 'Discovered that Juliet test cases contain explicit ground-truth labels inside Java identifiers: method names like `goodG2B1()`, `goodB2G()`, `bad()`, and class names containing the CWE ID. Built an AST/regex identifier scrubber (`a760204`, `e48e301`) to produce `juliet-heldout-1000-neutral.csv` and `eval-clean-152.csv`.',
+        consequence: 'When evaluated on leak-free neutralized data (`84726c7`), the legacy adapter’s accuracy dropped sharply—proving it had learned lexical shortcuts rather than dataflow semantics. This motivated moving to real-world CVEs.'
+      },
+      {
+        num: 'Pivot 02',
+        commits: '8cedcaa → da27f03 → 892e47d',
+        title: 'Synthetic-to-Real Collapse & MegaVul Partial Transfer',
+        problem: 'After fixing Juliet name leaks, the author tested retraining on MegaVul (real open-source vulnerability functions) and evaluating on real Semgrep alerts across 126 Vul4J Java repositories (`8cedcaa`).',
+        decision: 'Measured cross-domain transfer from function-level vulnerability classification (MegaVul) to static-analysis alert triage (Vul4J & 68 GHSA advisories).',
+        consequence: 'Found only PARTIAL transfer: classifying whether a whole function has a CVE is fundamentally different from deciding whether a specific Semgrep warning on line N is a True Positive or scanner noise. This led to building the dedicated 174-alert GHSA + 126-repo Vul4J benchmark (`892e47d`).'
+      },
+      {
+        num: 'Pivot 03',
+        commits: 'd85a712 → 5bb181f',
+        title: 'From 3-Line Text Generation to Single-Pass Logit Scoring',
+        problem: 'Generating `VERDICT / WHY / FIX` via autoregressive decoding took ~500–1,200 ms per alert, consumed 12–15 GB VRAM, and produced discrete text strings that were hard to threshold for Precision@90%Recall.',
+        decision: 'Replaced autoregressive text generation with single-pass vocabulary logit extraction (`triage/decision.py` on Qwen3.5-4B in `d85a712`, then `d1_triage/engine.py` on LiquidAI/d1-3B in `5bb181f`), computing $P(\\text{TP}) = \\frac{e^{\\text{pos}}}{e^{\\text{pos}} + e^{\\text{neg}}}$ in a single forward pass.',
+        consequence: 'Cut inference latency to 12–14 ms per alert on an Nvidia T4 GPU (6.25 GiB VRAM) and produced well-calibrated continuous probabilities for ROC-AUC and P@90R ranking.'
+      },
+      {
+        num: 'Pivot 04',
+        commits: '892e47d → f25eac6',
+        title: 'Unmasking the Global AUC Mirage (Within-Rule Blindness)',
+        problem: 'On the GHSA benchmark, Zero-Shot d1-3B achieved a stellar 0.8372 Global AUC on L3 (and Kev-4B achieved 0.7167). Most researchers would stop here and publish. Why didn’t TriageMate stop?',
+        decision: 'Decomposed Global AUC into Within-Rule AUC (measuring ranking performance among alerts triggered by the exact same Semgrep rule) and designed L0/L2/L3 ground-truth gates.',
+        consequence: 'Shocking finding: Zero-Shot d1-3B’s L0 Within-Rule AUC was 0.4297 (and Kev-4B was 0.4612)—worse than random guessing (0.5000)! High Global AUC was coming from rule-level priors (knowing Rule A is usually TP and Rule B is usually FP), NOT from distinguishing safe vs vulnerable code inside the same rule.'
+      },
+      {
+        num: 'Pivot 05',
+        commits: '645bd4c → f25eac6 → 5bb181f',
+        title: 'Statement-Level Sink Grounding (`>>> [ALERT LINE n]`) & Rule-Swap Controls',
+        problem: 'Why was Within-Rule AUC only 0.4297? Because raw code snippets have no compiler line numbers—when the prompt header said `Flagged Line: 45`, the LLM had no idea which statement in the snippet was line 45 ("source line number disconnect").',
+        decision: 'Created `d1_triage/sink_finder.py` to match Semgrep rule families to Java sink regexes and inject `>>> [ALERT LINE {n}]:` directly onto the flagged statement. Verified with paired Rule-Swap Controls (swapping code windows across alerts of the same rule).',
+        consequence: 'With ZERO weight updates, statement anchoring boosted L0 Within-Rule AUC from 0.4297 to 0.5986 (+16.89%) and L2 Within-Rule AUC from 0.4571 to 0.6321 (+17.50%). Rule-swap delta rose from +0.0202 to +0.0749 (L0), proving the model was now reading the code at the sink.'
+      },
+      {
+        num: 'Pivot 06',
+        commits: 'f25eac6 → 5bb181f → a6fb3fe',
+        title: 'Real-to-Real Contrastive LoRA (416 Patch Pairs) & 50/50 Ensemble',
+        problem: 'Targeted prompting improved within-rule discrimination, but could fine-tuning push L3 Within-Rule AUC even higher without collapsing on synthetic noise?',
+        decision: 'Constructed 416 real pre-patch (TP) vs post-patch (FP) commit pairs from real GitHub repositories and trained a Contrastive LoRA adapter on d1-3B (`f25eac6`), plus evaluated a 50/50 probability ensemble of Zero-Shot + Targeted/Contrastive.',
+        consequence: 'Contrastive LoRA achieved #1 L3 Within-Rule AUC of 0.6594 (beating Kev-4B’s 0.5100 by +14.94%) and +0.0839 L0 / +0.1106 L3 rule-swap delta, while the 50/50 Ensemble balanced strong within-rule discrimination (0.6280 L3) with top Vul4J generalization (0.8000 AUC).'
+      }
+    ];
+
+    const INTERVIEW_QA_DATA = [
+      {
+        id: 'q1', cat: 'ARCH',
+        q: 'Walk me through TriageMate in 60 seconds—what is it, why did you build it, and what are the headline results?',
+        a: 'TriageMate is a local static-analysis (SAST) alert triage engine that ranks Semgrep Java security warnings by real exploitability in 12–14 ms per alert on an Nvidia T4 GPU (6.25 GiB peak VRAM). Static scanners like Semgrep suffer from >70% false-positive rates because syntax rules flag every sink call without accurately verifying source-to-sink taint reachability or local sanitizers. Using Liquid AI’s 3B Hybrid State Space Model (`LiquidAI/d1-3B`), statement-level sink grounding (`>>> [ALERT LINE n]`), and real-to-real contrastive LoRA tuning on 416 patch pairs, TriageMate achieves 0.8372 Global AUC on verified L3 fix hunks, 0.8000 AUC across all 126 Vul4J repositories, and 0.6594 L3 Within-Rule AUC (beating the 4B dense transformer baseline Kev-4B by +12% to +14.9% AUC at half the memory and 6x faster latency).'
+      },
+      {
+        id: 'q2', cat: 'ARCH',
+        q: 'Why are there two separate package directories (`triage/` and `d1_triage/`) in the repository?',
+        a: '`triage/` represents the foundational framework built during Eras 1–5: it provides the `triagemate` CLI console script (registered in `pyproject.toml`), `javalang` AST slicing (`triage/dataset.py`), metric computations (`triage/metrics.py` for P@90R, ECE, Within-Rule AUC), CWE remediation hints (`triage/explain.py`), the Unsloth Qwen2.5-Coder-7B generative scorer, and the deterministic `Qwen/Qwen3.5-4B` option logit scorer (`triage/decision.py`). `d1_triage/` (added in Commit `5bb181f`) is the streamlined, ultra-low-latency production engine built specifically around `LiquidAI/d1-3B`, featuring `sink_finder.py` (`>>> [ALERT LINE n]` statement anchoring), single-pass binary logit softmax (`engine.py`), and Rich terminal/JSON reporting (`formatters.py`). Keeping both preserves backward compatibility with the Docker/training pipeline while offering a fast standalone CLI (`d1_triage.py`).'
+      },
+      {
+        id: 'q3', cat: 'DATA',
+        q: 'Tell me about the Juliet 97.9% score in commit 226b229. What went wrong and how did you catch it?',
+        a: 'In Commit `226b229`, our QLoRA-tuned model hit 979/1,000 (97.9% accuracy) on a held-out split of the NIST Juliet Java benchmark. In security ML, 97.9% on static analysis triage is a red flag. When I inspected the inputs, I realized NIST Juliet embeds ground-truth labels directly into method, class, and variable identifiers—such as `goodG2B()`, `goodB2G()`, and `bad()`, plus the CWE number in the class name. Even when the exact identifier wasn’t on the sink line, helper calls inside the method body leaked the label. In Commits `a760204` and `e48e301`, I wrote an identifier neutralization pipeline that scrubbed all `good`/`bad`/CWE names into neutral identifiers (`juliet-heldout-1000-neutral.csv`) and built `eval-clean-152.csv`. Re-scoring the old adapter in Commit `84726c7` showed a steep drop, proving the model had exploited lexical shortcuts.'
+      },
+      {
+        id: 'q4', cat: 'DATA',
+        q: 'What is the difference between Global ROC-AUC and Within-Rule ROC-AUC, and why did Zero-Shot d1-3B get 0.8372 Global AUC but 0.4297 Within-Rule AUC?',
+        a: 'Global ROC-AUC pools alerts from all Semgrep rules together. If Rule A (`formatted-sql-string`) has an 80% true-positive rate in the dataset and Rule B (`unencrypted-socket`) has a 5% true-positive rate, a model that simply outputs 0.9 for every Rule A alert and 0.1 for every Rule B alert—without reading a single line of Java code—will achieve a high Global AUC! Within-Rule ROC-AUC computes ROC-AUC separately inside each Semgrep rule family and averages across rules. Zero-Shot d1-3B scored 0.8372 Global L3 AUC because it knew which rule types were dangerous, but scored 0.4297 L0 Within-Rule AUC because without line markers (`>>>`), it couldn’t tell which statement in a 60-line snippet was the flagged sink.'
+      },
+      {
+        id: 'q5', cat: 'SEC',
+        q: 'How does `d1_triage/sink_finder.py` work line-by-line, and what happens if none of its regex patterns match?',
+        a: '`sink_finder.py` maintains a dictionary (`SINK_PATTERNS` / `RULE_PATTERNS`) mapping Semgrep rule substrings (like `"path-traversal"`, `"formatted-sql-string"`, `"object-deserialization"`, `"documentbuilderfactory"`, `"script-engine-injection"`, `"crlf-injection-logs"`) to lists of compiled regular expressions matching the dangerous Java API calls (e.g., `Paths\\.get\\(`, `new\\s+File\\(`, `executeQuery\\(`, `readObject\\(`, `newDocumentBuilder\\(`). Given `(code_snippet, rule_id, reported_line)`, `find_sink_line()` first checks if any rule key is a substring of `rule_id.lower()`, and if so scans the snippet lines for the first regex match. If no regex matches (or the rule family isn’t in the dictionary), it falls back deterministically to `idx = max(0, min(reported_line - 1, len(lines) - 1))`. Then `build_annotated_prompt()` prefixes that exact line with `>>> [ALERT LINE {line_no}]: ` and indents all other lines by 4 spaces.'
+      },
+      {
+        id: 'q6', cat: 'ML',
+        q: 'How does single-pass logit scoring work mathematically in `d1_triage/engine.py`? Why not use `model.generate()`?',
+        a: 'Autoregressive `model.generate()` decodes dozens of tokens one by one, taking 500–1,200 ms and requiring regex parsing of free-form text that can hallucinate format errors. In `d1_triage/engine.py`, we run a single forward pass on the prompt and inspect the next-token logit vector at the final sequence position (`logits[-1]`). We look up the token IDs for positive tokens (`"yes"`, `"Yes"`, `"true"`, `"True"`, `"1"`) and negative tokens (`"no"`, `"No"`, `"false"`, `"False"`, `"0"`), take `pos_logit = max(logits[pos_ids])` and `neg_logit = max(logits[neg_ids])`, and compute the binary softmax probability: $P(\\text{TP}) = \\frac{e^{\\text{pos\\_logit}}}{e^{\\text{pos\\_logit}} + e^{\\text{neg\\_logit}}}$. Confidence percentage is scaled as $|P(\\text{TP}) - 0.5| \\times 200$, mapping $P(\\text{TP})=0.5$ to 0% confidence and $P(\\text{TP}) \\in \\{0, 1\\}$ to 100% confidence.'
+      },
+      {
+        id: 'q7', cat: 'DATA',
+        q: 'Explain the L0, L2, and L3 evaluation gates introduced in commit 892e47d. Why do you need three different ground-truth definitions?',
+        a: 'When evaluating static analysis alerts against real-world security patches (68 GHSA advisories, 174 findings), labeling whether a Semgrep alert corresponds to the real vulnerability has three levels of strictness: \n• **L0 (Location Proxy):** The Semgrep alert falls in a file/region modified by the security commit. Noisy because a commit might touch a file while Semgrep flags an unrelated code smell in that same file.\n• **L2 (Stored + CWE Match):** The alert overlaps the vulnerability region AND the Semgrep rule’s CWE matches the advisory’s reported CWE.\n• **L3 (Verified Clean Fix Hunk + CWE):** The flagged sink line sits directly inside the verified human-adjudicated git diff hunk that fixed the vulnerability AND matches the CWE. Reporting all three proves our findings aren’t an artifact of loose ground-truth labeling.'
+      },
+      {
+        id: 'q8', cat: 'DATA',
+        q: 'What are "Paired Rule-Swap Controls" (`f25eac6`) and what do they prove?',
+        a: 'A skeptic might ask: "When you added `>>> [ALERT LINE n]`, did the model actually trace Java dataflow, or did changing the prompt format just shift token biases?" To prove causal sensitivity to the Java code itself, we ran Paired Rule-Swap Controls: for alerts sharing the exact same Semgrep rule ID and CWE header, we swapped their code windows (pairing Alert A’s rule header with Alert B’s code window) and measured the drop in AUC (`Code Signal Delta`). Before sink anchoring, the L0 Code Signal Delta was only +0.0202 (and Kev-4B was +0.0180). With Targeted Prompting (`>>>`), Code Signal Delta jumped to +0.0749 on L0, and with Contrastive LoRA it reached +0.0839 on L0 and +0.1106 on L3—proving the model’s score depends directly on the Java code dataflow inside the window.'
+      },
+      {
+        id: 'q9', cat: 'ML',
+        q: 'Why did Contrastive LoRA (`f25eac6`) improve L3 Within-Rule AUC to 0.6594, yet lower Global L3 AUC from 0.8372 to 0.5988 and Vul4J AUC from 0.8000 to 0.5444?',
+        a: 'This is a classic statistical trade-off between **between-rule prior calibration** and **within-rule feature discrimination**. Contrastive LoRA was trained exclusively on 416 balanced pre-patch (TP) vs post-patch (FP) pairs of the *same* method and rule. Because every rule in the contrastive training set had an exact 50% TP / 50% FP balance (1 pre-patch + 1 post-patch), the LoRA adapter unlearned the uneven base-rate priors between different Semgrep rules (which lowers Global AUC across mixed rules and Vul4J), while becoming much sharper at spotting subtle sanitizer diffs *within* the same rule (raising L3 Within-Rule AUC from 0.5495 to 0.6594). That is why we also built the **d1-3B 50/50 Ensemble**, which combines Zero-Shot’s rule-prior calibration (keeping Vul4J AUC at 0.8000) with Contrastive/Targeted within-rule discrimination (0.6280 L3 Within-Rule AUC).'
+      },
+      {
+        id: 'q10', cat: 'ML',
+        q: 'Why did you need commit 3678145 (`fix t4 training precision`) during QLoRA training?',
+        a: 'Many modern LLM training scripts default to `bf16=True` (Brain Float 16). However, the Nvidia Tesla T4 GPU uses the Turing architecture (SM 7.5), which lacks native hardware `bfloat16` tensor cores (introduced in Ampere SM 8.0, like A100/L4). Attempting `bf16` on T4 either raises a PyTorch/bitsandbytes runtime error or falls back to extremely slow software emulation. Commit `3678145` checks GPU compute capability and configures `fp16=True, bf16=False` on T4 while preserving `4-bit NormalFloat (nf4)` quantization for the base weights.'
+      },
+      {
+        id: 'q11', cat: 'ML',
+        q: 'How is Precision at 90% Recall (`P@90R`) computed in `triage/metrics.py` (`bdbf006`), and why is it better than F1 at a fixed 0.5 threshold?',
+        a: 'In security triage, missing a real vulnerability (False Negative) is much costlier than reviewing a False Positive. Security teams typically require catching at least 90% of real vulnerabilities (Recall >= 0.90) and want to know: "At the threshold where we catch 90% of real bugs, what fraction of flagged alerts are true bugs?" In `triage/metrics.py`, we sort all predictions by descending probability $P(\\text{TP})$, sweep candidate thresholds $t$, compute $\\text{Recall}(t) = \\frac{\\text{TP}_t}{\\text{TP}_t + \\text{FN}_t}$, filter to all thresholds where $\\text{Recall}(t) \\ge 0.90$, and return the maximum $\\text{Precision}(t) = \\frac{\\text{TP}_t}{\\text{TP}_t + \\text{FP}_t}$. On Vul4J, d1-3B achieves **0.5556 P@90R**.'
+      },
+      {
+        id: 'q12', cat: 'ML',
+        q: 'How is Expected Calibration Error (ECE) calculated in `triage/metrics.py`?',
+        a: 'ECE measures whether a model’s predicted probability $P(\\text{TP}) = 0.80$ actually corresponds to an 80% empirical true-positive rate. `triage/metrics.py` partitions the probability interval $[0, 1]$ into $M = 10$ equal-width bins. For each bin $B_m$, it computes the absolute difference between the average predicted probability $\\text{conf}(B_m)$ and the fraction of actual positives $\\text{acc}(B_m)$, weighted by the fraction of samples in that bin: $\\text{ECE} = \\sum_{m=1}^{10} \\frac{|B_m|}{N} |\\text{acc}(B_m) - \\text{conf}(B_m)|$.'
+      },
+      {
+        id: 'q13', cat: 'ARCH',
+        q: 'Why did you pin `REVISION = "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a"` in `triage/decision.py`?',
+        a: 'In single-pass logit scoring, even minor upstream tokenizer or weight updates on Hugging Face Hub can shift raw vocabulary logit magnitudes and change threshold calibration. Pinning the exact Git commit SHA (`851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a`) of `Qwen/Qwen3.5-4B` in `triage/decision.py` guarantees deterministic, bit-for-bit reproducible probability scores across machines.'
+      },
+      {
+        id: 'q14', cat: 'ARCH',
+        q: 'How does `--mock` mode work in `d1_triage`, and why did you include it?',
+        a: 'Downloading a 3B parameter model (~6 GB of weights) in CI/CD pipelines or during quick CLI integration tests is too slow and requires GPU/network access. In `d1_triage/engine.py`, passing `--mock` skips loading Hugging Face weights and runs a deterministic lightweight rule-and-sanitizer check (`">>>" in annotated_code and "sanitiz" not in annotated_code.lower()`) while exercising the exact same CLI argument parser, `sink_finder.py` annotation pipeline, `TriageFinding`/`TriageResult` dataclasses, Rich terminal tables, and JSON export.'
+      },
+      {
+        id: 'q15', cat: 'SEC',
+        q: 'What happened in commit 8cedcaa when you retrained on MegaVul and tested on Vul4J?',
+        a: 'MegaVul is a large dataset of real-world vulnerable and non-vulnerable functions extracted from C/C++/Java CVEs. In Commit `8cedcaa`, I retrained the model on MegaVul hoping it would solve real-world transfer. When evaluated on Semgrep scans of Vul4J repositories, it showed only *partial transfer*. The reason is task mismatch: MegaVul trains a model to ask "Does this function look like functions that had CVEs in the past?", whereas SAST triage requires asking "Does untrusted input reach *this specific Semgrep-flagged sink line* without a guard?" That realization directly led to statement-level sink anchoring (`>>> [ALERT LINE n]`) and contrastive fine-tuning on paired pre/post patch hunks.'
+      },
+      {
+        id: 'q16', cat: 'SEC',
+        q: 'What are the limitations of `d1_triage` right now, and how would you solve inter-procedural taint flow in v2?',
+        a: 'This is a critical architectural trade-off question. Currently, `d1_triage` operates on a single-file / intra-procedural code window (around the flagged method/lines) to maintain a 12–14 ms latency budget. If a variable is sanitized in an upstream caller (`Controller.java`) before being passed into `Service.java` where Semgrep flags the sink, a single-method window won’t see the upstream sanitizer and may flag a False Positive as a True Positive. In v2, to handle inter-procedural taint without blowing up the latency budget on every alert, I would use a **two-stage cascade**: run the 12ms `d1-3B` single-window pass on all alerts first, and only for high-probability or borderline alerts ($P(\\text{TP}) > 0.4$), use `javalang` / Joern call-graph slicing to prepend the 1-hop caller method signature and sanitization statements into the prompt.'
+      },
+      {
+        id: 'q17', cat: 'ARCH',
+        q: 'Why did you switch to `uv` and `uv.lock` in commit 645bd4c for the `Dockerfile`?',
+        a: 'Standard `pip install` without a cross-platform lockfile can resolve different transitive versions of `numpy`, `scikit-learn`, or `javalang` over time, breaking reproducibility. Using `uv sync --frozen --no-cache` in the `Dockerfile` enforces exact cryptographic hash verification against `uv.lock` and installs the virtual environment in seconds.'
+      },
+      {
+        id: 'q18', cat: 'ML',
+        q: 'Which specific linear layers are targeted by LoRA in `training/train_qlora.py`, and what are the rank and alpha hyperparameters?',
+        a: 'In `training/train_qlora.py`, LoRA adapters are applied to all 7 core transformer linear projections: the 4 attention projections (`q_proj`, `k_proj`, `v_proj`, `o_proj`) and the 3 SwiGLU MLP projections (`gate_proj`, `up_proj`, `down_proj`), with rank $r = 16$ and scaling factor $\\alpha = 16$ (so the scaling ratio $\\frac{\\alpha}{r} = 1.0$). Targeting both attention and MLP modules is essential for code reasoning tasks.'
+      },
+      {
+        id: 'q19', cat: 'ARCH',
+        q: 'How does `d1_triage/engine.py` generate human-readable explanations in 12–14 ms if it doesn’t run autoregressive text generation?',
+        a: 'Because autoregressive text generation would add 500+ ms of latency, `d1_triage/engine.py` decouples the **decision score** (computed by the d1-3B neural forward pass in 12–14 ms) from the **status rationale string**: `generate_explanation()` inspects the neural verdict (`TP` vs `FP`), the matched sink statement, and the Semgrep rule family (Path Traversal, SQL Injection, XXE DocumentBuilder, Object Deserialization, Unencrypted Socket) to synthesize a deterministic, rule-specific explanation of what taint/guard condition was detected at the anchored sink.'
+      },
+      {
+        id: 'q20', cat: 'SEC',
+        q: 'Why does `d1_triage/sink_finder.py` indent non-sink lines by 4 spaces when inserting `>>> [ALERT LINE n]:`?',
+        a: 'In `build_annotated_prompt()`, indenting every normal code line by 4 spaces while placing `>>> [ALERT LINE {line_no}]: {code_line}` at column 0 creates both a **visual structural outdent** and a **distinct BPE token sequence** (`>>>`, `[ALERT`, `LINE`) at the start of the target line. This prevents the marker from blending into nested Java indentation or comments and makes the sink statement immediately salient to the SSM/attention state.'
+      },
+      {
+        id: 'q21', cat: 'DATA',
+        q: 'How can an interviewer or reviewer verify all your benchmark numbers without downloading a 6GB model or owning a GPU?',
+        a: 'In Commit `a6fb3fe`, I added `audit/evaluate_d1.py` and `audit/test_whole_suite.py`. They load the pre-computed evaluation artifacts and ground-truth labels (`L0`, `L2`, `L3`, and `Vul4J`) and recompute every ROC-AUC, Within-Rule AUC, P@90R, and Rule-Swap Delta from scratch using only Python and NumPy in under 0.2 seconds on any CPU, running 19 automated assertions.'
+      },
+      {
+        id: 'q22', cat: 'ML',
+        q: 'How does Liquid AI’s `system_one_batch` with `type: "noul"` work on the Hugging Face model card?',
+        a: '`LiquidAI/d1-3B` provides a specialized fast-reasoning interface (`model.system_one_batch([(state, QUESTIONS)])`) where each question entry has `type: "noul"` (Normalized Option Utility / Logit scoring), an `instructions` prompt, and a binary `criteria` dictionary (`"true"` vs `"false"` definitions). In a single batched forward pass under `torch.inference_mode()`, it evaluates the state against the criteria and returns the calibrated probability `result[0]["answers"]["tp"]["noul"]`.'
+      },
+      {
+        id: 'q23', cat: 'ARCH',
+        q: 'What does `training/clean_legacy.py` and commit 6d3438b (`keep kaggle outputs small`) solve?',
+        a: 'Cloud GPU environments like Kaggle have a strict ~20 GB working directory quota. Full PyTorch checkpoints with AdamW 8-bit optimizer states and intermediate evaluations quickly fill the disk and crash multi-epoch runs. Commit `6d3438b` and `training/clean_legacy.py` configure checkpoints to save only the lightweight LoRA adapter weights (`adapter_model.safetensors`) and automatically purge superseded intermediate directories.'
+      },
+      {
+        id: 'q24', cat: 'SEC',
+        q: 'What specific CWEs have built-in remediation templates in `triage/explain.py`?',
+        a: '`triage/explain.py` defines `FIX_HINTS` covering core Java injection and configuration weaknesses, including CWE-22 (Path Traversal — normalize with `Path.normalize()` and verify `startsWith` base directory), CWE-74 / CWE-77 / CWE-78 (Command/Injection — avoid shell string concatenation, use parameterized argument arrays), CWE-79 (XSS — context-aware output encoding), CWE-89 (SQL Injection — use `PreparedStatement` with `?` placeholders), and CWE-611 (XXE — disable DOCTYPE declarations and external entities on `DocumentBuilderFactory`).'
+      },
+      {
+        id: 'q25', cat: 'DATA',
+        q: 'Why did Kev-4B get the highest L0 Global AUC (0.7521) on the leaderboard, and why is that actually a weakness?',
+        a: 'L0 is the noisy "location proxy" label where any Semgrep warning in a touched file is marked positive, even if the rule has nothing to do with the actual CVE. Kev-4B achieved 0.7521 on L0 because it over-relied on broad rule/file correlations, which is proven by two facts on the same row: 1) Its L0 Within-Rule AUC is 0.4612 (worse than random), and 2) Its L0 Code Signal Delta under rule-swap is only +0.0180. As soon as you evaluate on strict L3 Verified Fix Hunks, d1-3B beats Kev-4B by +12.05% Global AUC (0.8372 vs 0.7167) and +14.94% Within-Rule AUC (0.6594 vs 0.5100).'
+      },
+      {
+        id: 'q26', cat: 'ARCH',
+        q: 'How did you structure the unit tests in `tests/` (commits c5afb9c and 0d1125d)?',
+        a: 'The `tests/` directory contains 8 focused pytest modules that run without requiring GPU weights: `test_metrics.py` (tests P@90R, ECE, and Within-Rule AUC edge cases), `test_dataset.py` (tests `javalang` AST method slicing and leak neutralization), `test_prompts.py` (verifies prompt formatting and truncation at `MAX_CHARS`), `test_decision.py` (tests `state_of` and option scoring), `test_explain.py` (tests CWE fix lookup), `test_cli.py` (tests CLI argument parsing and Semgrep JSON ingestion), `test_scan_ids.py` (tests deterministic finding IDs), and `test_verify.py` (tests schema/label validation).'
+      },
+      {
+        id: 'q27', cat: 'ML',
+        q: 'What is the trade-off between CodeBERT (encoder-only), Qwen2.5-7B QLoRA (generative), and LiquidAI d1-3B (hybrid SSM) that you analyzed in commit 645bd4c and 8cedcaa?',
+        a: '1) **Small Encoders (CodeBERT ~125M):** Ultra-fast (<5 ms) and tiny memory (<1 GB), but short context (512 tokens) and weak zero-shot reasoning on complex multi-line Java sanitizers.\n2) **7B Generative QLoRA (Qwen2.5-Coder-7B):** Strong code syntax comprehension and can write free-text explanations, but slow (500–1,200 ms) and prone to synthetic overfitting.\n3) **3B Hybrid SSM Single-Pass Scorer (LiquidAI d1-3B):** Hits the Pareto frontier—long code context support, 12–14 ms single-pass latency, 6.25 GiB VRAM (fits easily on a T4 or developer laptop), and highest real-world L3 and Vul4J accuracy.'
+      },
+      {
+        id: 'q28', cat: 'SEC',
+        q: 'If a company wanted to deploy TriageMate into their GitHub Actions PR workflow tomorrow, how would it run?',
+        a: 'In a GitHub Actions workflow: 1) Run `semgrep --config auto --json -o semgrep.json .` on the PR diff; 2) Run `python d1_triage.py --scan semgrep.json --threshold 0.5 -o triage-report.json` (on a self-hosted T4 runner at 12ms/alert, or `--cpu` at 1–2s/alert for typical PRs with 5–10 findings); 3) Parse `triage-report.json` to block the PR only when `is_exploitable == true` ($P(\\text{TP}) \\ge \\text{threshold}$), cutting false-positive PR blocks by over 70% while maintaining 90% recall on real vulnerabilities.'
+      }
+    ];
+
+    const QUIZ_DATA = [
+      {
+        question: 'Why did the early QLoRA model achieve 97.9% accuracy on NIST Juliet (Commit 226b229)?',
+        options: [
+          'Because 7B models have memorized all Java CVEs',
+          'Because NIST Juliet embeds "good" and "bad" in method/class names (lexical identifier leakage)',
+          'Because javalang AST slicing removed all false positives automatically',
+          'Because Semgrep rules have 98% precision on Java'
+        ],
+        correctIdx: 1,
+        explanation: 'Commit a760204 revealed that Juliet methods are literally named goodG2B() and bad(), letting the model cheat via method names!'
+      },
+      {
+        question: 'What was Zero-Shot d1-3B’s L0 Within-Rule AUC before statement-level sink anchoring (`>>> [ALERT LINE n]`), and what did it jump to after anchoring?',
+        options: [
+          'From 0.5000 to 0.9500',
+          'From 0.4297 to 0.5986 (and 0.6321 on L2)',
+          'From 0.7167 to 0.8372',
+          'From 0.6594 to 0.8000'
+        ],
+        correctIdx: 1,
+        explanation: 'Without sink line markers, L0 Within-Rule AUC was 0.4297 (worse than random). Adding >>> [ALERT LINE n] raised it to 0.5986 on L0 and 0.6321 on L2 with zero weight changes!'
+      },
+      {
+        question: 'How does d1_triage/engine.py compute the exploitability probability P(TP) in 12–14 ms?',
+        options: [
+          'By generating 3 lines of text and counting the word "vulnerable"',
+          'By running 10 Monte Carlo dropout passes',
+          'By taking max logits over positive ("yes","true","1") and negative ("no","false","0") tokens in a single forward pass and applying 2-class softmax',
+          'By training a Random Forest on AST node counts'
+        ],
+        correctIdx: 2,
+        explanation: 'Single-pass logit scoring computes pos_logit and neg_logit at the final token position and applies exp(pos)/(exp(pos)+exp(neg)).'
+      },
+      {
+        question: 'What do Paired Rule-Swap Controls (Commit f25eac6) measure?',
+        options: [
+          'How fast Semgrep swaps YAML rules on disk',
+          'The performance drop (Code Signal Delta) when code windows are swapped across alerts sharing the same rule, proving the model inspects Java dataflow',
+          'GPU memory swapping between CPU RAM and VRAM',
+          'Switching between Qwen and Mistral tokenizers'
+        ],
+        correctIdx: 1,
+        explanation: 'Swapping code windows behind identical rule headers proves whether the model actually reads the Java code (+0.0749 L0, +0.1106 L3 delta).'
+      },
+      {
+        question: 'Why did Contrastive LoRA (trained on 416 real pre/post patch pairs) achieve the highest L3 Within-Rule AUC (0.6594) while having lower Global AUC than Zero-Shot?',
+        options: [
+          'Because LoRA weights corrupted the tokenizer',
+          'Because balanced 50/50 pre/post patch pairs per rule forced the model to learn sanitizer diffs within rules while erasing uneven between-rule base-rate priors',
+          'Because Contrastive LoRA only supports Python code',
+          'Because L3 has no CWE labels'
+        ],
+        correctIdx: 1,
+        explanation: 'Balanced pre/post patch pairs eliminate between-rule frequency shortcuts and force attention onto the code fix diff! Combining Zero-Shot + Contrastive in the 50/50 Ensemble gets the best of both.'
+      }
+    ];
+
+    // =========================================================================
+    // STATE MANAGEMENT
+    // =========================================================================
+    const state = {
+      activeTab: 'lesson1',
+      visitedTabs: new Set(['lesson1']),
+      activeFoundationId: 'f1',
+      commitReverseOrder: true, // Recursive backtracking (HEAD #54 -> #1) by default
+      commitEraFilter: 'ALL',
+      commitSearchQuery: '',
+      selectedCommitNum: 54,
+      activeEntryPointId: 'ep1',
+      activeFilePath: 'd1_triage/sink_finder.py',
+      activeScenarioId: 'sc1',
+      activePipelineStage: 1,
+      posLogit: 4.35,
+      negLogit: 1.15,
+      threshold: 0.50,
+      qaCategory: 'ALL',
+      qaSearch: '',
+      expandedQaIds: new Set(['q1', 'q2', 'q3']),
+      quizIndex: 0,
+      quizSelectedOption: null,
+      quizScore: 0,
+      quizAnsweredCount: 0
+    };
+
+    // =========================================================================
+    // NAVIGATION & MASTERY PROGRESS
+    // =========================================================================
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      state.visitedTabs.add(tabId);
+      document.querySelectorAll('.tab-panel').forEach(panel => {
+        panel.classList.toggle('hidden', panel.id !== tabId);
+      });
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        const isActive = btn.getAttribute('data-tab') === tabId;
+        btn.className = isActive
+          ? 'nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-indigo-600 text-white shadow'
+          : 'nav-tab px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition bg-slate-800/80 text-slate-300 hover:bg-slate-800';
+      });
+      const badge = document.getElementById('masteryBadge');
+      if (badge) {
+        badge.textContent = `${state.visitedTabs.size} / 7 Modules Visited`;
+        if (state.visitedTabs.size === 7) {
+          badge.className = 'font-mono font-semibold text-emerald-400';
+        }
+      }
+      if (tabId === 'lesson6') {
+        renderLeaderboardChart();
+      }
+    }
+
+    // =========================================================================
+    // LESSON 1: FOUNDATIONS RENDERER
+    // =========================================================================
+    function renderFoundations() {
+      const listEl = document.getElementById('foundationConceptList');
+      const detailEl = document.getElementById('foundationDetailCard');
+      if (!listEl || !detailEl) return;
+
+      listEl.innerHTML = FOUNDATIONS_DATA.map(item => {
+        const active = item.id === state.activeFoundationId;
+        return `
+          <button type="button" data-fid="${item.id}" class="foundation-btn w-full text-left p-3.5 rounded-xl border transition flex items-start gap-3 ${
+            active
+              ? 'bg-indigo-600/20 border-indigo-500 text-white'
+              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
+          }">
+            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold ${
+              active ? 'bg-indigo-500 text-white' : 'bg-slate-800 text-slate-400'
+            }">${item.step}</span>
+            <div>
+              <div class="text-xs sm:text-sm font-semibold">${item.title}</div>
+              <div class="text-xs text-slate-400 mt-0.5">${item.subtitle}</div>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.foundation-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeFoundationId = btn.getAttribute('data-fid');
+          renderFoundations();
+        });
+      });
+
+      const current = FOUNDATIONS_DATA.find(f => f.id === state.activeFoundationId) || FOUNDATIONS_DATA[0];
+      detailEl.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-xs font-mono text-indigo-400 uppercase">Building Block #${current.step}</span>
+              <h3 class="text-xl font-bold text-white mt-0.5">${current.title}</h3>
+            </div>
+          </div>
+          <div class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3.5 text-xs sm:text-sm text-indigo-200 font-medium">
+            ${current.summary}
+          </div>
+          <div class="text-xs sm:text-sm text-slate-300 leading-relaxed space-y-2">
+            ${current.deepDive}
+          </div>
+          <div class="space-y-1.5">
+            <div class="text-xs font-mono text-slate-400">Concrete Code / Prompt Representation in TriageMate:</div>
+            <pre class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-emerald-300 overflow-x-auto custom-scroll">${current.codeExample}</pre>
+          </div>
+        </div>
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-xs text-amber-200">
+          <strong>Interview Framing Tip:</strong> ${current.interviewTip}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // LESSON 2: 54-COMMIT ARCHAEOLOGY RENDERER
+    // =========================================================================
+    const ERA_BADGES = {
+      ERA1: { label: 'Era 1: Corpus & AST', cls: 'bg-sky-500/15 text-sky-300 border-sky-500/30' },
+      ERA2: { label: 'Era 2: Early LoRA & Eval', cls: 'bg-purple-500/15 text-purple-300 border-purple-500/30' },
+      ERA3: { label: 'Era 3: Juliet Leak Crisis', cls: 'bg-rose-500/15 text-rose-300 border-rose-500/30' },
+      ERA4: { label: 'Era 4: Triage Package', cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30' },
+      ERA5: { label: 'Era 5: MegaVul & Decision', cls: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' },
+      ERA6: { label: 'Era 6: LiquidAI d1-3B', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' }
+    };
+
+    function renderCommits() {
+      const listEl = document.getElementById('commitListContainer');
+      const inspectorEl = document.getElementById('commitInspectorPanel');
+      const countEl = document.getElementById('commitCountReadout');
+      const dirLabel = document.getElementById('directionLabel');
+      if (!listEl || !inspectorEl) return;
+
+      if (dirLabel) {
+        dirLabel.textContent = state.commitReverseOrder
+          ? 'Mode: Recursive Backtracking (HEAD #54 → Root #1)'
+          : 'Mode: Bottom-Up Chronological (Root #1 → HEAD #54)';
+      }
+
+      let filtered = COMMITS_DATA.filter(c => {
+        const matchesEra = state.commitEraFilter === 'ALL' || c.era === state.commitEraFilter;
+        const q = state.commitSearchQuery.trim().toLowerCase();
+        const matchesQuery = !q ||
+          c.sha.toLowerCase().includes(q) ||
+          c.title.toLowerCase().includes(q) ||
+          c.files.toLowerCase().includes(q) ||
+          c.problem.toLowerCase().includes(q) ||
+          c.decision.toLowerCase().includes(q);
+        return matchesEra && matchesQuery;
+      });
+
+      if (state.commitReverseOrder) {
+        filtered = [...filtered].sort((a, b) => b.num - a.num);
+      } else {
+        filtered = [...filtered].sort((a, b) => a.num - b.num);
+      }
+
+      if (countEl) {
+        countEl.textContent = `Showing ${filtered.length} of 54 commits`;
+      }
+
+      listEl.innerHTML = filtered.map(c => {
+        const isSelected = c.num === state.selectedCommitNum;
+        const badge = ERA_BADGES[c.era];
+        return `
+          <button type="button" data-cnum="${c.num}" class="commit-row-btn w-full text-left p-3 rounded-xl border transition flex items-center justify-between gap-3 ${
+            isSelected
+              ? 'bg-indigo-600/20 border-indigo-500 text-white'
+              : 'bg-slate-950/70 border-slate-800/90 text-slate-300 hover:border-slate-700'
+          }">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 shrink-0">#${c.num}</span>
+              <span class="text-xs font-mono text-indigo-400 shrink-0">${c.sha}</span>
+              <span class="text-xs sm:text-sm font-medium truncate">${c.title}</span>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="hidden sm:inline-block text-[11px] px-2 py-0.5 rounded-full border ${badge.cls}">${badge.label}</span>
+              <span class="text-xs font-mono text-slate-400">${c.date}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+
+      listEl.querySelectorAll('.commit-row-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedCommitNum = parseInt(btn.getAttribute('data-cnum'), 10);
+          renderCommits();
+        });
+      });
+
+      const current = COMMITS_DATA.find(c => c.num === state.selectedCommitNum) || COMMITS_DATA[53];
+      const badge = ERA_BADGES[current.era];
+      const parentCommit = COMMITS_DATA.find(c => c.num === current.num - 1);
+      const childCommit = COMMITS_DATA.find(c => c.num === current.num + 1);
+
+      inspectorEl.innerHTML = `
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300">Commit #${current.num} / 54</span>
+              <span class="text-xs font-mono text-emerald-400">${current.sha}</span>
+              <span class="text-xs font-mono text-slate-400">${current.date}</span>
+            </div>
+            <h3 class="text-base sm:text-lg font-bold text-white mt-1.5 font-mono">${current.title}</h3>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between text-xs">
+          <span class="px-2.5 py-0.5 rounded-full border ${badge.cls}">${badge.label}</span>
+          <a href="https://github.com/barryallen16/triagemate/commit/${current.sha}" target="_blank" rel="noopener noreferrer" class="text-indigo-400 hover:underline font-mono">
+            View Commit on GitHub ↗
+          </a>
+        </div>
+
+        <div class="space-y-3 text-xs sm:text-sm">
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+            <div class="text-xs font-mono text-slate-400 mb-1">Files / Modules Touched:</div>
+            <div class="font-mono text-indigo-300 text-xs">${current.files}</div>
+          </div>
+
+          <div class="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3.5 space-y-1">
+            <div class="text-xs font-mono uppercase text-rose-400 font-semibold">1. Problem / Triggering Context</div>
+            <p class="text-slate-200 text-xs leading-relaxed">${current.problem}</p>
+          </div>
+
+          <div class="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3.5 space-y-1">
+            <div class="text-xs font-mono uppercase text-indigo-400 font-semibold">2. Engineering Decision Made</div>
+            <p class="text-slate-200 text-xs leading-relaxed">${current.decision}</p>
+          </div>
+
+          <div class="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3.5 space-y-1">
+            <div class="text-xs font-mono uppercase text-emerald-400 font-semibold">3. Consequence / Downstream Result</div>
+            <p class="text-slate-200 text-xs leading-relaxed">${current.consequence}</p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-800">
+          <button type="button" id="prevCommitBtn" ${!parentCommit ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-xs font-mono bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 transition">
+            ← Parent (${parentCommit ? '#' + parentCommit.num + ' ' + parentCommit.sha : 'Root'})
+          </button>
+          <button type="button" id="nextCommitBtn" ${!childCommit ? 'disabled' : ''} class="px-3 py-1.5 rounded-lg text-xs font-mono bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 transition">
+            Child (${childCommit ? '#' + childCommit.num + ' ' + childCommit.sha : 'HEAD'}) →
+          </button>
+        </div>
+      `;
+
+      const prevBtn = document.getElementById('prevCommitBtn');
+      const nextBtn = document.getElementById('nextCommitBtn');
+      if (prevBtn && parentCommit) {
+        prevBtn.addEventListener('click', () => {
+          state.selectedCommitNum = parentCommit.num;
+          renderCommits();
+        });
+      }
+      if (nextBtn && childCommit) {
+        nextBtn.addEventListener('click', () => {
+          state.selectedCommitNum = childCommit.num;
+          renderCommits();
+        });
+      }
+    }
+
+    // =========================================================================
+    // LESSON 3: ENTRY POINTS & FILE TREE RENDERER
+    // =========================================================================
+    function renderEntryPoints() {
+      const cardsEl = document.getElementById('entryPointCards');
+      const detailEl = document.getElementById('entryPointDetailPanel');
+      const treeEl = document.getElementById('fileTreeList');
+      const fileDetailEl = document.getElementById('fileDetailPanel');
+      if (!cardsEl || !detailEl || !treeEl || !fileDetailEl) return;
+
+      cardsEl.innerHTML = ENTRY_POINTS_DATA.map(ep => {
+        const active = ep.id === state.activeEntryPointId;
+        return `
+          <button type="button" data-epid="${ep.id}" class="ep-card-btn text-left p-3.5 rounded-xl border transition flex flex-col justify-between ${
+            active
+              ? 'bg-indigo-600/20 border-indigo-500 text-white'
+              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+          }">
+            <span class="text-[11px] font-mono text-indigo-400">${ep.badge}</span>
+            <div class="text-xs font-bold mt-1">${ep.title}</div>
+          </button>
+        `;
+      }).join('');
+
+      cardsEl.querySelectorAll('.ep-card-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeEntryPointId = btn.getAttribute('data-epid');
+          renderEntryPoints();
+        });
+      });
+
+      const currentEp = ENTRY_POINTS_DATA.find(e => e.id === state.activeEntryPointId) || ENTRY_POINTS_DATA[0];
+      detailEl.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-mono text-emerald-400">${currentEp.badge}</span>
+            <h3 class="text-lg font-bold text-white">${currentEp.title}</h3>
+          </div>
+          <div class="text-xs font-mono bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-lg text-indigo-300">
+            Target: ${currentEp.target}
+          </div>
+        </div>
+        <p class="text-xs sm:text-sm text-slate-300">${currentEp.purpose}</p>
+        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-xs text-emerald-300">
+          $ ${currentEp.cmd}
+        </div>
+        <div class="space-y-1.5">
+          <div class="text-xs font-semibold uppercase tracking-wider text-slate-400">Exact Call-Graph &amp; Execution Sequence:</div>
+          <div class="grid grid-cols-1 gap-1.5">
+            ${currentEp.flowSteps.map(step => `
+              <div class="bg-slate-950/60 border border-slate-800/80 rounded-lg px-3.5 py-2 text-xs text-slate-200 font-mono">
+                ${step}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+
+      treeEl.innerHTML = FILE_TREE_DATA.map(f => {
+        const active = f.path === state.activeFilePath;
+        return `
+          <button type="button" data-fpath="${f.path}" class="file-row-btn w-full text-left px-3 py-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
+            active
+              ? 'bg-indigo-600/20 border-indigo-500 text-white'
+              : 'bg-slate-950/60 border-slate-800 text-slate-300 hover:border-slate-700'
+          }">
+            <span class="text-xs font-mono font-medium truncate">${f.path}</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 shrink-0">${f.group}</span>
+          </button>
+        `;
+      }).join('');
+
+      treeEl.querySelectorAll('.file-row-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activeFilePath = btn.getAttribute('data-fpath');
+          renderEntryPoints();
+        });
+      });
+
+      const currentFile = FILE_TREE_DATA.find(f => f.path === state.activeFilePath) || FILE_TREE_DATA[0];
+      fileDetailEl.innerHTML = `
+        <div class="border-b border-slate-800 pb-3 flex items-center justify-between">
+          <div>
+            <span class="text-xs font-mono text-indigo-400">${currentFile.group}</span>
+            <h4 class="text-lg font-bold font-mono text-white mt-0.5">${currentFile.path}</h4>
+          </div>
+          <a href="https://github.com/barryallen16/triagemate" target="_blank" rel="noopener noreferrer" class="text-xs text-indigo-400 hover:underline font-mono">Repo Source ↗</a>
+        </div>
+        <div class="bg-indigo-950/30 border border-indigo-500/30 rounded-xl p-3.5 text-xs sm:text-sm text-indigo-200 font-medium">
+          ${currentFile.role}
+        </div>
+        <div class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+          ${currentFile.details}
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // LESSON 4: INTERACTIVE DATA-FLOW SIMULATOR
+    // =========================================================================
+    const PIPELINE_STAGES = [
+      { step: 1, title: '1. Semgrep JSON Ingest', module: 'd1_triage/cli.py' },
+      { step: 2, title: '2. Regex Sink Finder', module: 'd1_triage/sink_finder.py' },
+      { step: 3, title: '3. Statement Anchoring', module: '>>> [ALERT LINE n]' },
+      { step: 4, title: '4. Single-Pass Logit Math', module: 'd1_triage/engine.py' },
+      { step: 5, title: '5. Rich UI & JSON Export', module: 'd1_triage/formatters.py' }
+    ];
+
+    function updateLogitCalculatorReadout() {
+      const pos = state.posLogit;
+      const neg = state.negLogit;
+      const thresh = state.threshold;
+
+      const maxLogit = Math.max(pos, neg);
+      const expPos = Math.exp(pos - maxLogit);
+      const expNeg = Math.exp(neg - maxLogit);
+      const pTp = expPos / (expPos + expNeg);
+      const confPct = Math.abs(pTp - 0.5) * 200.0;
+      const isTp = pTp >= thresh;
+
+      const posValEl = document.getElementById('posLogitValue');
+      const negValEl = document.getElementById('negLogitValue');
+      const threshValEl = document.getElementById('thresholdValue');
+      const ptpEl = document.getElementById('calcPtpReadout');
+      const confEl = document.getElementById('calcConfReadout');
+      const verdictEl = document.getElementById('calcVerdictReadout');
+
+      if (posValEl) posValEl.textContent = pos.toFixed(2);
+      if (negValEl) negValEl.textContent = neg.toFixed(2);
+      if (threshValEl) threshValEl.textContent = thresh.toFixed(2);
+      if (ptpEl) ptpEl.textContent = pTp.toFixed(4);
+      if (confEl) confEl.textContent = `${confPct.toFixed(1)}%`;
+      if (verdictEl) {
+        verdictEl.textContent = isTp ? 'TP (EXPLOIT)' : 'FP (SAFE/NOISE)';
+        verdictEl.className = isTp
+          ? 'text-lg font-bold font-mono text-rose-400 mt-0.5'
+          : 'text-lg font-bold font-mono text-emerald-400 mt-0.5';
+      }
+    }
+
+    function renderDataFlowSimulator() {
+      const scenarioGroup = document.getElementById('scenarioButtonGroup');
+      const stageTabs = document.getElementById('pipelineStageTabs');
+      const stageLeft = document.getElementById('pipelineStageLeft');
+      if (!scenarioGroup || !stageTabs || !stageLeft) return;
+
+      scenarioGroup.innerHTML = SCENARIOS_DATA.map(sc => {
+        const active = sc.id === state.activeScenarioId;
+        return `
+          <button type="button" data-scid="${sc.id}" class="scenario-btn px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+            active
+              ? 'bg-indigo-600 border-indigo-500 text-white'
+              : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700'
+          }">${sc.name}</button>
+        `;
+      }).join('');
+
+      scenarioGroup.querySelectorAll('.scenario-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const scId = btn.getAttribute('data-scid');
+          state.activeScenarioId = scId;
+          const sc = SCENARIOS_DATA.find(s => s.id === scId);
+          if (sc) {
+            state.posLogit = sc.posLogit;
+            state.negLogit = sc.negLogit;
+            const posSlider = document.getElementById('posLogitSlider');
+            const negSlider = document.getElementById('negLogitSlider');
+            if (posSlider) posSlider.value = sc.posLogit;
+            if (negSlider) negSlider.value = sc.negLogit;
+            updateLogitCalculatorReadout();
+          }
+          renderDataFlowSimulator();
+        });
+      });
+
+      stageTabs.innerHTML = PIPELINE_STAGES.map(st => {
+        const active = st.step === state.activePipelineStage;
+        return `
+          <button type="button" data-step="${st.step}" class="stage-step-btn p-3 rounded-xl border text-left transition ${
+            active
+              ? 'bg-indigo-600/20 border-indigo-500 text-white'
+              : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+          }">
+            <div class="text-xs font-bold">${st.title}</div>
+            <div class="text-[11px] font-mono text-indigo-400 mt-0.5">${st.module}</div>
+          </button>
+        `;
+      }).join('');
+
+      stageTabs.querySelectorAll('.stage-step-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.activePipelineStage = parseInt(btn.getAttribute('data-step'), 10);
+          renderDataFlowSimulator();
+        });
+      });
+
+      const sc = SCENARIOS_DATA.find(s => s.id === state.activeScenarioId) || SCENARIOS_DATA[0];
+      const maxL = Math.max(sc.posLogit, sc.negLogit);
+      const pTp = Math.exp(sc.posLogit - maxL) / (Math.exp(sc.posLogit - maxL) + Math.exp(sc.negLogit - maxL));
+      const confPct = Math.abs(pTp - 0.5) * 200;
+
+      if (state.activePipelineStage === 1) {
+        stageLeft.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-xs font-mono text-indigo-400">Stage 1 • d1_triage/cli.py: load_semgrep_json()</span>
+              <h3 class="text-lg font-bold text-white">Ingesting the Raw Semgrep Finding into <code class="font-mono">TriageFinding</code></h3>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            When you run <code class="font-mono text-indigo-300">python d1_triage.py --scan semgrep.json</code>, <code class="font-mono text-slate-200">load_semgrep_json()</code> parses each entry in the Semgrep <code class="font-mono">results[]</code> array and constructs a <code class="font-mono text-emerald-300">TriageFinding</code> dataclass instance:
+          </p>
+          <pre class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 overflow-x-auto custom-scroll">{
+  "check_id": "${sc.rule}",
+  "path": "${sc.file}",
+  "start": { "line": ${sc.line} },
+  "extra": {
+    "message": "Potential ${sc.cwe} vulnerability detected by Semgrep rule.",
+    "metadata": { "cwe": ["${sc.cwe}"] },
+    "lines": ${JSON.stringify(sc.rawCode)}
+  }
+}</pre>
+        `;
+      } else if (state.activePipelineStage === 2) {
+        stageLeft.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-xs font-mono text-indigo-400">Stage 2 • d1_triage/sink_finder.py: find_sink_line()</span>
+              <h3 class="text-lg font-bold text-white">Locating the Exact Vulnerable Sink Statement</h3>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            Why can't we just trust the raw line number in the prompt header? Because the code snippet passed to the LLM has no line numbers printed on each line! <code class="font-mono text-indigo-300">find_sink_line(code_snippet, rule_id, reported_line)</code> matches the rule family against <code class="font-mono">SINK_PATTERNS</code>:
+          </p>
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-2 text-xs font-mono">
+            <div><span class="text-slate-400">Rule ID:</span> <span class="text-indigo-300">${sc.rule}</span></div>
+            <div><span class="text-slate-400">Pattern Matched:</span> <span class="text-amber-300">${sc.sinkRegexMatched}</span></div>
+            <div><span class="text-slate-400">Identified Sink Line (${sc.line}):</span> <span class="text-rose-400">${sc.sinkStatement}</span></div>
+          </div>
+        `;
+      } else if (state.activePipelineStage === 3) {
+        stageLeft.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-xs font-mono text-indigo-400">Stage 3 • d1_triage/sink_finder.py: build_annotated_prompt()</span>
+              <h3 class="text-lg font-bold text-white">Injecting Statement-Level Sink Grounding (<code class="font-mono text-rose-400">&gt;&gt;&gt; [ALERT LINE ${sc.line}]</code>)</h3>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            This single transformation jumped L0 Within-Rule AUC from <strong>0.4297 to 0.5986</strong> and L2 Within-Rule AUC from <strong>0.4571 to 0.6321</strong>! Notice how non-sink lines are indented by 4 spaces while the sink statement sits at column 0 with <code class="font-mono text-rose-400">&gt;&gt;&gt; [ALERT LINE ${sc.line}]:</code>:
+          </p>
+          <pre class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-emerald-300 overflow-x-auto custom-scroll">Rule: ${sc.rule}
+CWE: ${sc.cwe}
+File: ${sc.file}
+Flagged Line: ${sc.line}
+Java (Flagged sink marked with >>>):
+\`\`\`java
+${sc.annotatedCode}
+\`\`\`</pre>
+        `;
+      } else if (state.activePipelineStage === 4) {
+        stageLeft.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-xs font-mono text-indigo-400">Stage 4 • d1_triage/engine.py: D1TriageEngine</span>
+              <h3 class="text-lg font-bold text-white">Single-Pass Forward Execution &amp; Binary Softmax</h3>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            <code class="font-mono text-indigo-300">LiquidAI/d1-3B</code> processes the anchored state and taint-reachability question in a single forward pass (<strong>12–14 ms on T4 GPU</strong>):
+          </p>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">pos_logit</div>
+              <div class="text-base font-bold font-mono text-emerald-400 mt-0.5">${sc.posLogit.toFixed(2)}</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">neg_logit</div>
+              <div class="text-base font-bold font-mono text-rose-400 mt-0.5">${sc.negLogit.toFixed(2)}</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">P(TP)</div>
+              <div class="text-base font-bold font-mono text-white mt-0.5">${pTp.toFixed(4)}</div>
+            </div>
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-3">
+              <div class="text-xs text-slate-400">Confidence</div>
+              <div class="text-base font-bold font-mono text-amber-400 mt-0.5">${confPct.toFixed(1)}%</div>
+            </div>
+          </div>
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-300">
+            <strong class="text-white">Rule-Aware Taint Rationale (<code class="font-mono">generate_explanation()</code>):</strong><br>
+            ${sc.explanation}
+          </div>
+        `;
+      } else {
+        stageLeft.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <span class="text-xs font-mono text-indigo-400">Stage 5 • d1_triage/formatters.py: export_json_results()</span>
+              <h3 class="text-lg font-bold text-white">Structured <code class="font-mono">TriageResult</code> Output &amp; Rich CLI Table</h3>
+            </div>
+          </div>
+          <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">
+            Finally, <code class="font-mono text-indigo-300">formatters.py</code> prints a color-coded Rich terminal table and exports the JSON report for CI/CD gating:
+          </p>
+          <pre class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-indigo-200 overflow-x-auto custom-scroll">{
+  "finding_id": "${sc.id}",
+  "rule": "${sc.rule}",
+  "cwe": "${sc.cwe}",
+  "file_path": "${sc.file}",
+  "line_number": ${sc.line},
+  "decision": "${sc.groundTruth}",
+  "is_exploitable": ${sc.groundTruth === 'TP'},
+  "p_tp": ${pTp.toFixed(4)},
+  "confidence_pct": ${confPct.toFixed(1)},
+  "sink_statement": ${JSON.stringify(sc.sinkStatement)},
+  "latency_ms": 12.8,
+  "device": "cuda:0 (Tesla T4)",
+  "explanation": ${JSON.stringify(sc.explanation)}
+}</pre>
+        `;
+      }
+    }
+
+    // =========================================================================
+    // LESSON 5: PIVOTS RENDERER
+    // =========================================================================
+    function renderPivots() {
+      const grid = document.getElementById('pivotsGrid');
+      if (!grid) return;
+      grid.innerHTML = PIVOTS_DATA.map(p => `
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3 flex flex-col justify-between">
+          <div class="space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-indigo-500/20 text-indigo-300">${p.num}</span>
+              <span class="text-xs font-mono text-slate-400">Commits: ${p.commits}</span>
+            </div>
+            <h3 class="text-base sm:text-lg font-bold text-white">${p.title}</h3>
+            <div class="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3 text-xs text-slate-200">
+              <strong class="text-rose-400 font-mono uppercase block mb-0.5">What Went Wrong / Discovery:</strong>
+              ${p.problem}
+            </div>
+            <div class="bg-indigo-950/20 border border-indigo-500/30 rounded-xl p-3 text-xs text-slate-200">
+              <strong class="text-indigo-400 font-mono uppercase block mb-0.5">Architectural Decision:</strong>
+              ${p.decision}
+            </div>
+          </div>
+          <div class="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 text-xs text-slate-200">
+            <strong class="text-emerald-400 font-mono uppercase block mb-0.5">Empirical Consequence &amp; Metrics:</strong>
+            ${p.consequence}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================================
+    // LESSON 6: CHART.JS LEADERBOARD RENDERER
+    // =========================================================================
+    let leaderboardChartInstance = null;
+
+    function renderLeaderboardChart() {
+      const canvas = document.getElementById('leaderboardChart');
+      const selectEl = document.getElementById('metricChartSelect');
+      const captionEl = document.getElementById('chartInsightCaption');
+      if (!canvas || typeof Chart === 'undefined') return;
+
+      const mode = selectEl ? selectEl.value : 'l3_both';
+      const labels = [
+        'Heuristic',
+        'Kev-4B',
+        'd1-3B Zero-Shot',
+        'd1-3B Targeted',
+        'd1-3B Contrastive',
+        'd1-3B 50/50 Ens.'
+      ];
+
+      let datasets = [];
+      let caption = '';
+
+      if (mode === 'l3_both') {
+        datasets = [
+          {
+            label: 'L3 Clean Hunk Global AUC',
+            data: [0.5235, 0.7167, 0.8372, 0.6261, 0.5988, 0.6125],
+            backgroundColor: 'rgba(99, 102, 241, 0.8)'
+          },
+          {
+            label: 'L3 Within-Rule AUC',
+            data: [0.5000, 0.5100, 0.5495, 0.5761, 0.6594, 0.6280],
+            backgroundColor: 'rgba(16, 185, 129, 0.85)'
+          }
+        ];
+        caption = 'Notice the trade-off on L3 Verified Fix Hunks: d1-3B Zero-Shot leads Global AUC (0.8372 vs Kev-4B 0.7167), while d1-3B Contrastive LoRA leads Within-Rule AUC (0.6594 vs Kev-4B 0.5100).';
+      } else if (mode === 'within_all') {
+        datasets = [
+          {
+            label: 'L0 Within-Rule AUC',
+            data: [0.5000, 0.4612, 0.4297, 0.5986, 0.5374, 0.6213],
+            backgroundColor: 'rgba(56, 189, 248, 0.8)'
+          },
+          {
+            label: 'L2 Within-Rule AUC',
+            data: [0.5000, 0.4820, 0.4571, 0.6321, 0.5095, 0.6214],
+            backgroundColor: 'rgba(168, 85, 247, 0.8)'
+          },
+          {
+            label: 'L3 Within-Rule AUC',
+            data: [0.5000, 0.5100, 0.5495, 0.5761, 0.6594, 0.6280],
+            backgroundColor: 'rgba(16, 185, 129, 0.85)'
+          }
+        ];
+        caption = 'Before statement sink anchoring (>>> [ALERT LINE n]), both Kev-4B (0.4612) and Zero-Shot d1-3B (0.4297) scored below 0.50 on L0 Within-Rule AUC. Targeted Prompting + Contrastive LoRA + 50/50 Ensemble lifted Within-Rule AUC above 0.62–0.6594.';
+      } else {
+        datasets = [
+          {
+            label: 'Vul4J Real CVEs AUC (126 Repos)',
+            data: [0.5778, 0.6667, 0.8000, 0.8000, 0.5444, 0.8000],
+            backgroundColor: 'rgba(245, 158, 11, 0.85)'
+          },
+          {
+            label: 'L0 Rule-Swap Code Signal Delta',
+            data: [0.0000, 0.0180, 0.0202, 0.0749, 0.0839, 0.0794],
+            backgroundColor: 'rgba(244, 63, 94, 0.85)'
+          }
+        ];
+        caption = 'd1-3B Zero-Shot, Targeted Prompt, and 50/50 Ensemble all achieve 0.8000 AUC across 126 Vul4J repositories (+13.33% over Kev-4B), while Targeted, Contrastive, and Ensemble multiply the Rule-Swap Code Signal Delta by ~4x.';
+      }
+
+      if (captionEl) captionEl.textContent = caption;
+
+      if (leaderboardChartInstance) {
+        leaderboardChartInstance.destroy();
+      }
+
+      leaderboardChartInstance = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { labels: { color: '#cbd5e1', font: { size: 11 } } }
+          },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(51,65,85,0.3)' } },
+            y: { min: 0, max: 1.0, ticks: { color: '#94a3b8', font: { size: 11 } }, grid: { color: 'rgba(51,65,85,0.3)' } }
+          }
+        }
+      });
+    }
+
+    // =========================================================================
+    // LESSON 7: INTERVIEW SIMULATOR & QUIZ RENDERER
+    // =========================================================================
+    const QA_CAT_LABELS = {
+      ARCH: { label: 'Architecture & Codebase', cls: 'bg-indigo-500/20 text-indigo-300' },
+      ML: { label: 'LLM, SSM & Logit Math', cls: 'bg-emerald-500/20 text-emerald-300' },
+      DATA: { label: 'Data Leaks & Eval Gates', cls: 'bg-rose-500/20 text-rose-300' },
+      SEC: { label: 'SAST, Semgrep & AST', cls: 'bg-amber-500/20 text-amber-300' }
+    };
+
+    function renderInterviewQA() {
+      const container = document.getElementById('qaCardsContainer');
+      if (!container) return;
+
+      const q = state.qaSearch.trim().toLowerCase();
+      const filtered = INTERVIEW_QA_DATA.filter(item => {
+        const matchCat = state.qaCategory === 'ALL' || item.cat === state.qaCategory;
+        const matchQ = !q || item.q.toLowerCase().includes(q) || item.a.toLowerCase().includes(q);
+        return matchCat && matchQ;
+      });
+
+      container.innerHTML = filtered.map((item, idx) => {
+        const expanded = state.expandedQaIds.has(item.id);
+        const badge = QA_CAT_LABELS[item.cat];
+        return `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+            <button type="button" data-qaid="${item.id}" class="qa-toggle-btn w-full text-left p-4 flex items-start justify-between gap-3 hover:bg-slate-800/50 transition">
+              <div class="space-y-1">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-mono text-slate-400">Q${idx + 1}</span>
+                  <span class="text-[11px] font-mono px-2 py-0.5 rounded ${badge.cls}">${badge.label}</span>
+                </div>
+                <div class="text-sm font-bold text-white">${item.q}</div>
+              </div>
+              <span class="text-xs font-mono px-2.5 py-1 rounded bg-slate-800 text-slate-300 shrink-0">
+                ${expanded ? 'Hide Answer' : 'Show Answer'}
+              </span>
+            </button>
+            ${expanded ? `
+              <div class="px-4 pb-4 pt-2 border-t border-slate-800/80 text-xs sm:text-sm text-slate-300 leading-relaxed whitespace-pre-line bg-slate-950/40">
+                ${item.a}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.qa-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-qaid');
+          if (state.expandedQaIds.has(id)) {
+            state.expandedQaIds.delete(id);
+          } else {
+            state.expandedQaIds.add(id);
+          }
+          renderInterviewQA();
+        });
+      });
+    }
+
+    function renderQuiz() {
+      const container = document.getElementById('quizContainer');
+      const scoreBadge = document.getElementById('quizScoreBadge');
+      if (!container) return;
+
+      if (scoreBadge) {
+        scoreBadge.textContent = `Score: ${state.quizScore} / ${state.quizAnsweredCount}`;
+      }
+
+      const currentQ = QUIZ_DATA[state.quizIndex];
+      const answered = state.quizSelectedOption !== null;
+
+      container.innerHTML = `
+        <div class="text-xs font-mono text-slate-400">Question ${state.quizIndex + 1} of ${QUIZ_DATA.length}</div>
+        <div class="text-sm font-semibold text-white leading-snug">${currentQ.question}</div>
+        <div class="space-y-2">
+          ${currentQ.options.map((opt, idx) => {
+            let btnCls = 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700';
+            if (answered) {
+              if (idx === currentQ.correctIdx) {
+                btnCls = 'bg-emerald-950/60 border-emerald-500 text-emerald-200';
+              } else if (idx === state.quizSelectedOption) {
+                btnCls = 'bg-rose-950/60 border-rose-500 text-rose-200';
+              }
+            }
+            return `
+              <button type="button" data-optidx="${idx}" ${answered ? 'disabled' : ''} class="quiz-opt-btn w-full text-left p-3 rounded-xl border text-xs transition ${btnCls}">
+                ${opt}
+              </button>
+            `;
+          }).join('')}
+        </div>
+        ${answered ? `
+          <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300">
+            <strong class="${state.quizSelectedOption === currentQ.correctIdx ? 'text-emerald-400' : 'text-rose-400'}">
+              ${state.quizSelectedOption === currentQ.correctIdx ? 'Correct! ' : 'Not quite! '}
+            </strong>
+            ${currentQ.explanation}
+          </div>
+          <button type="button" id="nextQuizQuestionBtn" class="w-full py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition">
+            Next Question →
+          </button>
+        ` : ''}
+      `;
+
+      container.querySelectorAll('.quiz-opt-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.getAttribute('data-optidx'), 10);
+          state.quizSelectedOption = idx;
+          state.quizAnsweredCount += 1;
+          if (idx === currentQ.correctIdx) {
+            state.quizScore += 1;
+          }
+          renderQuiz();
+        });
+      });
+
+      const nextBtn = document.getElementById('nextQuizQuestionBtn');
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          state.quizIndex = (state.quizIndex + 1) % QUIZ_DATA.length;
+          state.quizSelectedOption = null;
+          renderQuiz();
+        });
+      }
+    }
+
+    // =========================================================================
+    // INITIALIZATION & EVENT LISTENERS
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      // Top Nav Tabs
+      document.querySelectorAll('.nav-tab').forEach(btn => {
+        btn.addEventListener('click', () => {
+          switchTab(btn.getAttribute('data-tab'));
+        });
+      });
+
+      // Modal Controls
+      const modal = document.getElementById('cheatSheetModal');
+      const openModalBtn = document.getElementById('openCheatSheetBtn');
+      const closeModalBtn = document.getElementById('closeCheatSheetBtn');
+      if (openModalBtn && modal) {
+        openModalBtn.addEventListener('click', () => {
+          modal.classList.remove('hidden');
+          modal.classList.add('flex');
+        });
+      }
+      if (closeModalBtn && modal) {
+        closeModalBtn.addEventListener('click', () => {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        });
+      }
+
+      // Commit Explorer Controls
+      const toggleDirBtn = document.getElementById('toggleDirectionBtn');
+      if (toggleDirBtn) {
+        toggleDirBtn.addEventListener('click', () => {
+          state.commitReverseOrder = !state.commitReverseOrder;
+          renderCommits();
+        });
+      }
+
+      document.querySelectorAll('.era-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.commitEraFilter = btn.getAttribute('data-era');
+          document.querySelectorAll('.era-btn').forEach(b => {
+            const active = b.getAttribute('data-era') === state.commitEraFilter;
+            b.className = active
+              ? 'era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white'
+              : 'era-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700';
+          });
+          renderCommits();
+        });
+      });
+
+      const commitSearchInput = document.getElementById('commitSearchInput');
+      if (commitSearchInput) {
+        commitSearchInput.addEventListener('input', e => {
+          state.commitSearchQuery = e.target.value;
+          renderCommits();
+        });
+      }
+
+      // Logit Calculator Sliders
+      const posSlider = document.getElementById('posLogitSlider');
+      const negSlider = document.getElementById('negLogitSlider');
+      const threshSlider = document.getElementById('thresholdSlider');
+      if (posSlider) {
+        posSlider.addEventListener('input', e => {
+          state.posLogit = parseFloat(e.target.value);
+          updateLogitCalculatorReadout();
+        });
+      }
+      if (negSlider) {
+        negSlider.addEventListener('input', e => {
+          state.negLogit = parseFloat(e.target.value);
+          updateLogitCalculatorReadout();
+        });
+      }
+      if (threshSlider) {
+        threshSlider.addEventListener('input', e => {
+          state.threshold = parseFloat(e.target.value);
+          updateLogitCalculatorReadout();
+        });
+      }
+
+      // Chart Selector
+      const metricSelect = document.getElementById('metricChartSelect');
+      if (metricSelect) {
+        metricSelect.addEventListener('change', () => {
+          renderLeaderboardChart();
+        });
+      }
+
+      // Q&A Controls
+      document.querySelectorAll('.qa-cat-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.qaCategory = btn.getAttribute('data-qacat');
+          document.querySelectorAll('.qa-cat-btn').forEach(b => {
+            const active = b.getAttribute('data-qacat') === state.qaCategory;
+            b.className = active
+              ? 'qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-indigo-600 text-white'
+              : 'qa-cat-btn px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700';
+          });
+          renderInterviewQA();
+        });
+      });
+
+      const qaSearchInput = document.getElementById('qaSearchInput');
+      if (qaSearchInput) {
+        qaSearchInput.addEventListener('input', e => {
+          state.qaSearch = e.target.value;
+          renderInterviewQA();
+        });
+      }
+
+      const revealAllBtn = document.getElementById('revealAllQaBtn');
+      const collapseAllBtn = document.getElementById('collapseAllQaBtn');
+      if (revealAllBtn) {
+        revealAllBtn.addEventListener('click', () => {
+          INTERVIEW_QA_DATA.forEach(item => state.expandedQaIds.add(item.id));
+          renderInterviewQA();
+        });
+      }
+      if (collapseAllBtn) {
+        collapseAllBtn.addEventListener('click', () => {
+          state.expandedQaIds.clear();
+          renderInterviewQA();
+        });
+      }
+
+      // Initial Render of All Sections
+      renderFoundations();
+      renderCommits();
+      renderEntryPoints();
+      renderDataFlowSimulator();
+      updateLogitCalculatorReadout();
+      renderPivots();
+      renderInterviewQA();
+      renderQuiz();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 2: All 54 Commits — TriageMate Deep Textbook</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #020617; color: #f1f5f9; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .ann-line { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(30,41,59,0.7); align-items: start; }
+    .ann-line:hover { background: rgba(30,41,59,0.45); }
+    .ln { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; user-select: none; padding-top: 2px; }
+    .code-txt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .ann-note { font-size: 11.5px; color: #94a3b8; margin-top: 3px; line-height: 1.45; }
+    .ann-note strong { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+  <nav class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sticky top-3 z-30 backdrop-blur">
+    <div class="font-bold text-white text-sm">
+      TriageMate Deep Course • <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">barryallen16/triagemate</a>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <a href="index.html" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold">Interactive Hub</a>
+      <a href="lesson_01_foundations_zero_to_one.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Foundations</a>
+      <a href="lesson_02_recursive_54_commits.html" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold">2. All 54 Commits</a>
+      <a href="lesson_03_all_entry_points.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. Entry Points</a>
+      <a href="lesson_04_end_to_end_data_flows.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. Data Flows &amp; Code</a>
+      <a href="lesson_05_decisions_and_consequences.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Pivots &amp; Consequences</a>
+      <a href="lesson_06_evaluation_gates_and_math.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Math &amp; Leaderboard</a>
+      <a href="lesson_07_interview_prep_guide.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">7. Interview Prep</a>
+    </div>
+  </nav>
+
+  <header class="space-y-3">
+    <div class="text-xs font-mono text-indigo-400 uppercase tracking-wider">Lesson 02 • Recursive Backtracking From HEAD (#54) to Root (#1)</div>
+    <h1 class="text-3xl font-extrabold text-white">Complete 54-Commit Archaeology of <code>barryallen16/triagemate</code></h1>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Every single commit is listed below in <strong>recursive backtracking order</strong> (starting from <code>HEAD a6fb3fe</code> on Oct 31, 2026 and walking parent-by-parent back to <code>b5349cf</code> on Jul 1, 2025), showing the exact problem, engineering decision, and downstream consequence.
+    </p>
+  </header>
+
+  <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 overflow-x-auto">
+    <table class="w-full text-left border-collapse text-xs">
+      <thead>
+        <tr class="border-b border-slate-800 text-slate-400 bg-slate-950/70">
+          <th class="py-3 px-2.5">#</th>
+          <th class="py-3 px-2.5">Commit</th>
+          <th class="py-3 px-2.5">Date</th>
+          <th class="py-3 px-2.5">Era</th>
+          <th class="py-3 px-2.5">Files Touched</th>
+          <th class="py-3 px-2.5">Problem → Decision → Consequence</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-800/80">
+        
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#54</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/a6fb3fe" target="_blank" rel="noopener noreferrer" class="hover:underline">a6fb3fe</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2026-10-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 6: LiquidAI d1-3B</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">README.md, docs/TECHNICAL_REPORT.md, audit/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Final release needed crisp docs and zero-dep CPU audit reproduction.<br><strong>Decision:</strong> Streamlined README leaderboard and finalized audit/evaluate_d1.py + test_whole_suite.py (19 tests).<br><strong class="text-emerald-400">Result:</strong> HEAD of main: reproduces all benchmark numbers in &lt;0.2s on CPU.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#53</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/5bb181f" target="_blank" rel="noopener noreferrer" class="hover:underline">5bb181f</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2026-10-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 6: LiquidAI d1-3B</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">d1_triage.py, d1_triage/cli.py, engine.py, formatters.py, sink_finder.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Developers needed a fast standalone CLI with Rich tables and JSON export.<br><strong>Decision:</strong> Built d1_triage package around LiquidAI/d1-3B with --demo, --scan, --benchmark, --mock.<br><strong class="text-emerald-400">Result:</strong> Delivered 12–14ms GPU triage (6.25 GiB VRAM) and instant CI dry-runs.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#52</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/f25eac6" target="_blank" rel="noopener noreferrer" class="hover:underline">f25eac6</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2026-10-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 6: LiquidAI d1-3B</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">d1_triage/sink_finder.py, training/, audit/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Line-number disconnect caused 0.4297 within-rule AUC.<br><strong>Decision:</strong> Added &gt;&gt;&gt; [ALERT LINE n] sink grounding + 416 real patch pairs contrastive LoRA + Rule-Swap Controls.<br><strong class="text-emerald-400">Result:</strong> L0 Within-Rule jumped 0.4297-&gt;0.5986 (L2-&gt;0.6321) zero-shot; Contrastive LoRA hit 0.6594 L3 Within-Rule AUC; Swap Delta +0.0749 L0 / +0.1106 L3.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#51</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/892e47d" target="_blank" rel="noopener noreferrer" class="hover:underline">892e47d</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2026-10-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 6: LiquidAI d1-3B</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/ghsa-eval/, datasets/vul4j-eval/, audit/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed multi-tier ground truth separating noisy file overlap from verified fix hunks.<br><strong>Decision:</strong> Built 174-alert GHSA benchmark (68 advisories) + 126-repo Vul4J census with L0/L2/L3 gates.<br><strong class="text-emerald-400">Result:</strong> Exposed Within-Rule blindness: Zero-Shot L3 Global AUC 0.8372 vs L0 Within-Rule AUC 0.4297!</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#50</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/d85a712" target="_blank" rel="noopener noreferrer" class="hover:underline">d85a712</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2026-10-29</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 5: MegaVul &amp; Decision</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/cli.py, triage/decision.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Autoregressive 3-line text generation was slow and noisy.<br><strong>Decision:</strong> Built DecisionScorer (Qwen/Qwen3.5-4B rev 851bf6e8) using single-pass TP/FP option logits.<br><strong class="text-emerald-400">Result:</strong> Eliminated text decoding overhead and enabled continuous probability ranking.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#49</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/da27f03" target="_blank" rel="noopener noreferrer" class="hover:underline">da27f03</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 5: MegaVul &amp; Decision</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> README needed MegaVul partial transfer findings.<br><strong>Decision:</strong> Documented cross-domain transfer results.<br><strong class="text-emerald-400">Result:</strong> Clarified why sink grounding was needed next.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#48</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/8cedcaa" target="_blank" rel="noopener noreferrer" class="hover:underline">8cedcaa</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 5: MegaVul &amp; Decision</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">notes/, model-evaluation/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Tested if real CVE functions (MegaVul) transfer to Vul4J Semgrep alerts.<br><strong>Decision:</strong> Retrained on MegaVul and evaluated on Vul4J Semgrep scans.<br><strong class="text-emerald-400">Result:</strong> Found only PARTIAL transfer: whole-function CVE detection != sink-specific alert triage.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#47</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/645bd4c" target="_blank" rel="noopener noreferrer" class="hover:underline">645bd4c</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">Dockerfile, pyproject.toml, uv.lock, README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed reproducible containerization and model-size tradeoff analysis.<br><strong>Decision:</strong> Added Dockerfile (Python 3.12 + OpenJDK 17 + Semgrep + uv sync --frozen) &amp; CodeBERT vs QLoRA analysis.<br><strong class="text-emerald-400">Result:</strong> Bit-for-bit reproducible container deployment.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#46</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/0d1125d" target="_blank" rel="noopener noreferrer" class="hover:underline">0d1125d</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">tests/test_cli.py, test_decision.py, test_explain.py, test_scan_ids.py, test_verify.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> CLI, decision, explain, scan IDs, and verify lacked tests.<br><strong>Decision:</strong> Added full unit test coverage across remaining triage/ modules.<br><strong class="text-emerald-400">Result:</strong> 8 pytest files covering core package.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#45</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/914f99d" target="_blank" rel="noopener noreferrer" class="hover:underline">914f99d</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">legacy_experiment/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Unreferenced training scripts cluttered root.<br><strong>Decision:</strong> Moved legacy scripts into legacy_experiment/.<br><strong class="text-emerald-400">Result:</strong> Focused active codebase.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#44</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/5e4d8b8" target="_blank" rel="noopener noreferrer" class="hover:underline">5e4d8b8</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">.gitignore, legacy_experiment/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Active code and legacy scripts needed clear separation.<br><strong>Decision:</strong> Documented legacy experiment and gitignored generated outputs.<br><strong class="text-emerald-400">Result:</strong> Cleaner repo hygiene.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#43</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/53fca4f" target="_blank" rel="noopener noreferrer" class="hover:underline">53fca4f</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/dataset.py, README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> HF URLs pointed to temporary repos.<br><strong>Decision:</strong> Standardized URLs to canonical triagemate dataset repo.<br><strong class="text-emerald-400">Result:</strong> Consistent data resolution.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#42</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/55b32e8" target="_blank" rel="noopener noreferrer" class="hover:underline">55b32e8</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> README read like a dry log.<br><strong>Decision:</strong> Rewrote README prose to narrate problem, leaks, and solution.<br><strong class="text-emerald-400">Result:</strong> Clearer project storytelling.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#41</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/c5afb9c" target="_blank" rel="noopener noreferrer" class="hover:underline">c5afb9c</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">tests/test_metrics.py, test_dataset.py, test_prompts.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Metric math and AST slicing lacked unit tests.<br><strong>Decision:</strong> Added pytest suite for metrics, dataset, and prompts.<br><strong class="text-emerald-400">Result:</strong> Locked in mathematical and AST correctness.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#40</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/dcde8f6" target="_blank" rel="noopener noreferrer" class="hover:underline">dcde8f6</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Setup commands needed updating for new package layout.<br><strong>Decision:</strong> Updated README CLI snippets.<br><strong class="text-emerald-400">Result:</strong> Aligned docs with code.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#39</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/5757f90" target="_blank" rel="noopener noreferrer" class="hover:underline">5757f90</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">docs/, README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Users needed instructions to extract zipped LoRA adapters.<br><strong>Decision:</strong> Documented adapter unzip and loading workflow.<br><strong class="text-emerald-400">Result:</strong> Smoother external evaluation.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#38</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/8bacd63" target="_blank" rel="noopener noreferrer" class="hover:underline">8bacd63</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-23</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">audit/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed structured evaluation audit artifacts.<br><strong>Decision:</strong> Exported comprehensive evaluation tables to audit/.<br><strong class="text-emerald-400">Result:</strong> Created verifiable audit trail.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#37</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/60de2ab" target="_blank" rel="noopener noreferrer" class="hover:underline">60de2ab</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/verify.py, training/report.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Label casing/indexing mismatch affected subset scoping.<br><strong>Decision:</strong> Normalized TP/FP label mapping in verify.py.<br><strong class="text-emerald-400">Result:</strong> Eliminated silent label inversion bugs.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#36</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/4d97897" target="_blank" rel="noopener noreferrer" class="hover:underline">4d97897</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">notes/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Original README reflected superseded Juliet experiments.<br><strong>Decision:</strong> Moved old README into notes/ as historical lab log.<br><strong class="text-emerald-400">Result:</strong> Preserved experiment history without confusing new users.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#35</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/e68b711" target="_blank" rel="noopener noreferrer" class="hover:underline">e68b711</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Linter flagged unused imports.<br><strong>Decision:</strong> Removed dead imports.<br><strong class="text-emerald-400">Result:</strong> Cleaner module namespace.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#34</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/c555ce1" target="_blank" rel="noopener noreferrer" class="hover:underline">c555ce1</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/report.py, notes/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed honest reporting of leaked vs clean scores.<br><strong>Decision:</strong> Published legacy vs neutralized benchmark comparisons.<br><strong class="text-emerald-400">Result:</strong> Established transparent evaluation culture.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#33</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/bdbf006" target="_blank" rel="noopener noreferrer" class="hover:underline">bdbf006</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/metrics.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Threshold sweep for P@90R had an off-by-one boundary bug.<br><strong>Decision:</strong> Fixed Precision at 90% Recall calculation and isolated scratch data.<br><strong class="text-emerald-400">Result:</strong> Guaranteed exact P@90R and ECE metrics.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#32</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/84726c7" target="_blank" rel="noopener noreferrer" class="hover:underline">84726c7</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/evaluate_llm.py, model-evaluation/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed to measure legacy adapter on leak-free sets.<br><strong>Decision:</strong> Scored legacy LoRA adapter on eval-clean-152.csv &amp; neutral Juliet.<br><strong class="text-emerald-400">Result:</strong> Quantified accuracy drop once identifier leaks were removed.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#31</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/26de247" target="_blank" rel="noopener noreferrer" class="hover:underline">26de247</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/report.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Comparing metrics across epochs required manual log scraping.<br><strong>Decision:</strong> Built training/report.py log parser -&gt; Markdown tables.<br><strong class="text-emerald-400">Result:</strong> Automated experiment reporting.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#30</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/6d3438b" target="_blank" rel="noopener noreferrer" class="hover:underline">6d3438b</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/train_qlora.py, training/clean_legacy.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Kaggle 20 GB disk quota filled up with optimizer states.<br><strong>Decision:</strong> Saved LoRA-adapter-only checkpoints + clean_legacy.py.<br><strong class="text-emerald-400">Result:</strong> Prevented disk-full crashes on cloud notebooks.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#29</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/4ab601c" target="_blank" rel="noopener noreferrer" class="hover:underline">4ab601c</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">docs/, triage/data_sheet.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Dataset schemas and provenance lacked formal docs.<br><strong>Decision:</strong> Added data hosting docs and Datasheets for Datasets module.<br><strong class="text-emerald-400">Result:</strong> Improved dataset transparency.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#28</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/0772aa7" target="_blank" rel="noopener noreferrer" class="hover:underline">0772aa7</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-22</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/runner.py, triage/dataset.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Remote workers needed zero-config dataset fetching.<br><strong>Decision:</strong> Automated HF Hub dataset downloads in runner.<br><strong class="text-emerald-400">Result:</strong> Enabled one-command remote reproduction.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#27</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/3678145" target="_blank" rel="noopener noreferrer" class="hover:underline">3678145</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-21</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/train_qlora.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Nvidia T4 (SM 7.5) lacks native bfloat16 tensor cores, causing crashes.<br><strong>Decision:</strong> Added hardware check selecting fp16 on T4 and bf16 on Ampere+.<br><strong class="text-emerald-400">Result:</strong> Eliminated T4 training precision crashes.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#26</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/7afb7ec" target="_blank" rel="noopener noreferrer" class="hover:underline">7afb7ec</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-21</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/errors.py, training/runner.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Remote GPU jobs failed silently or lost FP examples.<br><strong>Decision:</strong> Added hardened runner and hard-negative error sampler.<br><strong class="text-emerald-400">Result:</strong> Automated remote fault tolerance and error logging.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#25</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/14f6e76" target="_blank" rel="noopener noreferrer" class="hover:underline">14f6e76</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-21</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 4: Triage Package</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/dataset.py, prompts.py, training/train_qlora.py, launch.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Code was scattered in notebooks.<br><strong>Decision:</strong> Created modular triage/ and training/ Python packages.<br><strong class="text-emerald-400">Result:</strong> Enabled unit testing and CLI packaging.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#24</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/2c57da8" target="_blank" rel="noopener noreferrer" class="hover:underline">2c57da8</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 3: Juliet Leak Crisis</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">LICENSE</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Open-source release required permissive license.<br><strong>Decision:</strong> Added Apache License 2.0.<br><strong class="text-emerald-400">Result:</strong> Cleared enterprise and academic adoption.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#23</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/e48e301" target="_blank" rel="noopener noreferrer" class="hover:underline">e48e301</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 3: Juliet Leak Crisis</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/juliet-heldout-1000-neutral.csv, v2</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed permanent before/after leak benchmark artifacts.<br><strong>Decision:</strong> Committed neutralized juliet-heldout-1000-neutral.csv and v2.<br><strong class="text-emerald-400">Result:</strong> Created reproducible proof of lexical identifier leakage.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#22</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/a760204" target="_blank" rel="noopener noreferrer" class="hover:underline">a760204</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 3: Juliet Leak Crisis</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">scripts/, triage/dataset.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> CRITICAL: Juliet names methods goodG2B(), goodB2G(), bad() and embeds CWE IDs in class names.<br><strong>Decision:</strong> Built identifier neutralization pipeline scrubbing good/bad/CWE tokens.<br><strong class="text-emerald-400">Result:</strong> Exposed the Juliet Illusion and blocked lexical shortcuts.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#21</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/226b229" target="_blank" rel="noopener noreferrer" class="hover:underline">226b229</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 3: Juliet Leak Crisis</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/juliet-heldout-1000.csv</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Evaluated QLoRA model on 1,000 held-out Juliet cases.<br><strong>Decision:</strong> Recorded 979 / 1,000 (97.9% accuracy).<br><strong class="text-emerald-400">Result:</strong> Triggered skepticism: 97.9% was suspiciously high, prompting leak audit!</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#20</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/4b560f8" target="_blank" rel="noopener noreferrer" class="hover:underline">4b560f8</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-10-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 3: Juliet Leak Crisis</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/dataset.py, README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Git LFS bandwidth quotas slowed cloning.<br><strong>Decision:</strong> Migrated dataset references to Hugging Face Hub.<br><strong class="text-emerald-400">Result:</strong> Decoupled code repo from large data blobs.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#19</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/9b8dbc8" target="_blank" rel="noopener noreferrer" class="hover:underline">9b8dbc8</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-09-03</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">.gitignore</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Checkpoints and wandb logs polluted git status.<br><strong>Decision:</strong> Added .gitignore rules for derived outputs.<br><strong class="text-emerald-400">Result:</strong> Kept repository clean.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#18</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/45da378" target="_blank" rel="noopener noreferrer" class="hover:underline">45da378</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-09-02</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">README.md</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Repo lacked top-level architecture documentation.<br><strong>Decision:</strong> Authored initial README.md.<br><strong class="text-emerald-400">Result:</strong> Established baseline project docs (later archived to notes/).</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#17</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/eda01dd" target="_blank" rel="noopener noreferrer" class="hover:underline">eda01dd</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-31</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/eval-clean-152.csv</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> 200-case set had some ambiguous/overlapping rows.<br><strong>Decision:</strong> Froze strictly leak-free 152-sample eval-clean-152.csv.<br><strong class="text-emerald-400">Result:</strong> Provided first trustworthy held-out benchmark.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#16</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/d2163f9" target="_blank" rel="noopener noreferrer" class="hover:underline">d2163f9</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-30</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Full evaluation was too slow for rapid prompt iteration.<br><strong>Decision:</strong> Saved stratified 200-case evaluation subset.<br><strong class="text-emerald-400">Result:</strong> Accelerated prompt iteration loop.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#15</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/50d6dcd" target="_blank" rel="noopener noreferrer" class="hover:underline">50d6dcd</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-28</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/testcases_java_eval.ipynb</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed error slicing and confusion matrices by CWE.<br><strong>Decision:</strong> Created testcases_java_eval.ipynb (58.1% of repo size).<br><strong class="text-emerald-400">Result:</strong> Enabled qualitative FP vs FN inspection.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#14</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/795e5e3" target="_blank" rel="noopener noreferrer" class="hover:underline">795e5e3</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-26</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed untuned LLM baseline to justify fine-tuning.<br><strong>Decision:</strong> Benchmarked zero-shot Mistral baseline.<br><strong class="text-emerald-400">Result:</strong> Showed untuned generative prompts had poor calibration.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#13</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/9ae9636" target="_blank" rel="noopener noreferrer" class="hover:underline">9ae9636</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-24</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">model-evaluation/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed edge-case Java snippets to stress-test slicing.<br><strong>Decision:</strong> Added raw unparsed Java test cases.<br><strong class="text-emerald-400">Result:</strong> Exposed edge cases requiring code-window fallback.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#12</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/36a6a10" target="_blank" rel="noopener noreferrer" class="hover:underline">36a6a10</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/verify.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Malformed JSONL rows crashed training mid-epoch.<br><strong>Decision:</strong> Added automated pre-flight schema and syntax validation.<br><strong class="text-emerald-400">Result:</strong> Prevented mid-run pipeline failures.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#11</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/0b4c4b1" target="_blank" rel="noopener noreferrer" class="hover:underline">0b4c4b1</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-17</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">training/evaluate_llm.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Manual output inspection was unscalable.<br><strong>Decision:</strong> Created evaluation harness parsing VERDICT for accuracy/P/R/F1.<br><strong class="text-emerald-400">Result:</strong> Standardized checkpoint comparison.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#10</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/092c15a" target="_blank" rel="noopener noreferrer" class="hover:underline">092c15a</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-13</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 2: Early LoRA &amp; Eval</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">legacy_experiment/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Needed rapid QLoRA prototyping on T4 GPUs.<br><strong>Decision:</strong> Added Unsloth 4-bit QLoRA training notebook.<br><strong class="text-emerald-400">Result:</strong> Verified 7B coder fine-tuning fits within 15 GB T4 VRAM.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#9</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/6497929" target="_blank" rel="noopener noreferrer" class="hover:underline">6497929</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-08-10</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/, triage/dataset.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Sliced AST methods needed instruction-tuning formatting.<br><strong>Decision:</strong> Built automated JSONL generator for SFTTrainer.<br><strong class="text-emerald-400">Result:</strong> Completed Era 1 data engineering pipeline.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#8</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/1894b83" target="_blank" rel="noopener noreferrer" class="hover:underline">1894b83</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-30</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">triage/dataset.py</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Full Java classes overflowed LLM context windows.<br><strong>Decision:</strong> Integrated javalang AST parser to slice enclosing methods.<br><strong class="text-emerald-400">Result:</strong> Reduced token counts &gt;75% and focused on method-level dataflow.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#7</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/32b7546" target="_blank" rel="noopener noreferrer" class="hover:underline">32b7546</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-27</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">scripts/, datasets/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Near-identical snippets in train and test inflated accuracy.<br><strong>Decision:</strong> Implemented content hashing and strict deduplication.<br><strong class="text-emerald-400">Result:</strong> Eliminated exact-match train/test contamination.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#6</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/e9ecd4b" target="_blank" rel="noopener noreferrer" class="hover:underline">e9ecd4b</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-20</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/, model-evaluation/java_vul_dataset.csv</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Training required one consolidated dataset.<br><strong>Decision:</strong> Merged Juliet, MegaVul, and synthetic corpora.<br><strong class="text-emerald-400">Result:</strong> Created unified pool but introduced duplicate methods across splits.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#5</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/c7d7105" target="_blank" rel="noopener noreferrer" class="hover:underline">c7d7105</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-10</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> LLMs needed reasoning supervision alongside binary TP/FP labels.<br><strong>Decision:</strong> Saved ground-truth reasoning traces and remediation hints.<br><strong class="text-emerald-400">Result:</strong> Provided targets for 3-line VERDICT / WHY / FIX prompts.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#4</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/24ebe88" target="_blank" rel="noopener noreferrer" class="hover:underline">24ebe88</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-09</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Sparse CWE coverage in raw extracts.<br><strong>Decision:</strong> Ingested synthetic vulnerable and safe Java code snippets.<br><strong class="text-emerald-400">Result:</strong> Expanded training volume; later found to add synthetic distribution bias.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#3</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/b47b198" target="_blank" rel="noopener noreferrer" class="hover:underline">b47b198</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-06</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/, scripts/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Upstream sources had mismatched column names and label encodings.<br><strong>Decision:</strong> Standardized raw sources into unified code, CWE, rule, label schema.<br><strong class="text-emerald-400">Result:</strong> Enabled downstream merging across corpora.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#2</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/4a9c773" target="_blank" rel="noopener noreferrer" class="hover:underline">4a9c773</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-03</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">datasets/, scripts/</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> No unified Java SAST alert dataset existed.<br><strong>Decision:</strong> Added raw upstream extracts from NIST Juliet Java test suite and rules.<br><strong class="text-emerald-400">Result:</strong> Created raw corpus foundation with heterogeneous schemas.</td>
+      </tr>
+    
+      <tr class="hover:bg-slate-800/40 transition">
+        <td class="py-2.5 px-2.5 font-mono text-slate-400">#1</td>
+        <td class="py-2.5 px-2.5 font-mono text-indigo-400"><a href="https://github.com/barryallen16/triagemate/commit/b5349cf" target="_blank" rel="noopener noreferrer" class="hover:underline">b5349cf</a></td>
+        <td class="py-2.5 px-2.5 font-mono text-slate-400 whitespace-nowrap">2025-07-01</td>
+        <td class="py-2.5 px-2.5 text-xs font-semibold text-amber-300">Era 1: Corpus &amp; AST</td>
+        <td class="py-2.5 px-2.5 font-mono text-xs text-emerald-300">.gitattributes</td>
+        <td class="py-2.5 px-2.5 text-xs text-slate-200"><strong>Problem:</strong> Large benchmark CSVs bloat Git history.<br><strong>Decision:</strong> Initialized repository with Git LFS tracking rules.<br><strong class="text-emerald-400">Result:</strong> Enabled versioning of 1,000-row benchmark CSVs cleanly.</td>
+      </tr>
+    
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="border-t border-slate-800 pt-6 pb-8 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
+    <span>Grounded in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> &amp; <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" class="text-indigo-400 underline" target="_blank">HF: d1-3B-java-vuln-triage</a></span>
+    <span><a href="lesson_03_all_entry_points.html" class="text-emerald-400 font-semibold hover:underline">Next: Lesson 3 (All 6 Entry Points) →</a></span>
+  </footer>
+  <script>
+    document.querySelectorAll('.drill-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) {
+          target.classList.toggle('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

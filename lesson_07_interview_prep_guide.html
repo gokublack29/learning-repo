@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 7: Interview Prep — TriageMate Deep Textbook</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; background: #020617; color: #f1f5f9; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    .ann-line { display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 6px 10px; border-bottom: 1px solid rgba(30,41,59,0.7); align-items: start; }
+    .ann-line:hover { background: rgba(30,41,59,0.45); }
+    .ln { color: #64748b; font-family: 'JetBrains Mono', monospace; font-size: 11px; text-align: right; user-select: none; padding-top: 2px; }
+    .code-txt { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+    .ann-note { font-size: 11.5px; color: #94a3b8; margin-top: 3px; line-height: 1.45; }
+    .ann-note strong { color: #a5b4fc; }
+  </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8 max-w-6xl mx-auto space-y-8">
+  <nav class="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs sticky top-3 z-30 backdrop-blur">
+    <div class="font-bold text-white text-sm">
+      TriageMate Deep Course • <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 hover:underline" target="_blank" rel="noopener noreferrer">barryallen16/triagemate</a>
+    </div>
+    <div class="flex flex-wrap gap-1.5">
+      <a href="index.html" class="px-2.5 py-1 rounded-lg bg-indigo-600 text-white font-semibold">Interactive Hub</a>
+      <a href="lesson_01_foundations_zero_to_one.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">1. Foundations</a>
+      <a href="lesson_02_recursive_54_commits.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">2. All 54 Commits</a>
+      <a href="lesson_03_all_entry_points.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">3. Entry Points</a>
+      <a href="lesson_04_end_to_end_data_flows.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">4. Data Flows &amp; Code</a>
+      <a href="lesson_05_decisions_and_consequences.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">5. Pivots &amp; Consequences</a>
+      <a href="lesson_06_evaluation_gates_and_math.html" class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700">6. Math &amp; Leaderboard</a>
+      <a href="lesson_07_interview_prep_guide.html" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-semibold">7. Interview Prep</a>
+    </div>
+  </nav>
+
+  <header class="space-y-3">
+    <div class="text-xs font-mono text-indigo-400 uppercase tracking-wider">Lesson 07 • Technical Interview Defense &amp; Rapid Drills</div>
+    <h1 class="text-3xl font-extrabold text-white">Defending Every Design Choice in a Live Interview</h1>
+    <p class="text-sm text-slate-300 leading-relaxed">
+      Practice answering each high-stakes follow-up out loud before clicking <strong>Reveal Model Answer</strong>. For all 28 flashcards and the multiple-choice quiz, open <code>index.html</code>.
+    </p>
+  </header>
+
+  <div class="space-y-4 text-sm text-slate-300">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <h2 class="font-bold text-white">Drill 1: "Why wouldn't I just send Semgrep alerts to Claude or GPT-4o instead of using a 3B model?"</h2>
+      <button type="button" class="drill-toggle px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold" data-target="q_d1">Reveal Model Answer</button>
+      <div id="q_d1" class="hidden text-xs bg-slate-950 border border-slate-800 rounded-xl p-3.5 leading-relaxed">
+        Three production reasons: 1) <strong>On-premise IP privacy</strong> (6.25 GiB VRAM runs locally with zero source code leaving the VPC); 2) <strong>CI/CD latency</strong> (12–14 ms/alert vs 3–10 s/alert for cloud APIs on thousands of monorepo findings); 3) <strong>Two-stage cascade</strong>: use <code>d1-3B</code> as the free Tier-1 filter for intra-procedural noise and escalate only the top borderline/high-risk alerts (<code>P(TP) &gt; 0.40</code>) to a heavier multi-file inter-procedural agent.
+      </div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <h2 class="font-bold text-white">Drill 2: "Why did Contrastive LoRA get 0.6594 L3 Within-Rule AUC yet drop on Vul4J (0.5444)?"</h2>
+      <button type="button" class="drill-toggle px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold" data-target="q_d2">Reveal Model Answer</button>
+      <div id="q_d2" class="hidden text-xs bg-slate-950 border border-slate-800 rounded-xl p-3.5 leading-relaxed">
+        Training on 416 balanced 50/50 pre-patch (TP) vs post-patch (FP) pairs per rule forces the adapter to attend to subtle sanitizer diffs within a rule (raising L3 Within-Rule AUC from 0.5495 to 0.6594), but erases uneven between-rule base-rate priors. Combining Zero-Shot + Contrastive in the <strong>50/50 Ensemble</strong> recovers 0.8000 Vul4J AUC while keeping 0.6280 L3 Within-Rule AUC.
+      </div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-2">
+      <h2 class="font-bold text-white">Drill 3: "How did you verify that <code>&gt;&gt;&gt; [ALERT LINE n]</code> actually made the model inspect Java code?"</h2>
+      <button type="button" class="drill-toggle px-3 py-1 rounded-lg bg-indigo-600 text-white text-xs font-semibold" data-target="q_d3">Reveal Model Answer</button>
+      <div id="q_d3" class="hidden text-xs bg-slate-950 border border-slate-800 rounded-xl p-3.5 leading-relaxed">
+        Via <strong>Paired Rule-Swap Controls</strong> (Commit <code>f25eac6</code>): swapping code windows between alerts that share the exact same Semgrep rule header caused AUC to drop sharply (Code Signal Delta <code>+0.0749</code> on L0 Targeted Prompt, <code>+0.0839</code> on L0 Contrastive, <code>+0.1106</code> on L3), proving causal dependence on the Java dataflow inside the window.
+      </div>
+    </div>
+  </div>
+
+  <footer class="border-t border-slate-800 pt-6 pb-8 text-xs text-slate-400 flex flex-wrap justify-between gap-2">
+    <span>Grounded in <a href="https://github.com/barryallen16/triagemate" class="text-indigo-400 underline" target="_blank">barryallen16/triagemate</a> &amp; <a href="https://huggingface.co/barryallen16/d1-3B-java-vuln-triage" class="text-indigo-400 underline" target="_blank">HF: d1-3B-java-vuln-triage</a></span>
+    <span><a href="index.html" class="text-emerald-400 font-semibold hover:underline">Open Full Interactive Hub (index.html) →</a></span>
+  </footer>
+  <script>
+    document.querySelectorAll('.drill-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = document.getElementById(btn.getAttribute('data-target'));
+        if (target) {
+          target.classList.toggle('hidden');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
