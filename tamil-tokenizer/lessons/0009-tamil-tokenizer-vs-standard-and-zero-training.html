@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 9: What Makes This Tokenizer Different</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0009</div>
+      <h1>What Makes This Tokenizer Different</h1>
+      <p class="lead">What "works without training" actually means, and the five architectural choices that set this tokenizer apart from GPT-2 and Hugging Face.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 9 of 13.</strong> <span class="dim">The algorithm. The five things this repo does that a general-purpose tokenizer does not.</span>
+    </div>
+
+    <section>
+      <h2>1. What Does "Works Without Training" Mean?</h2>
+      <p>Standard BPE tokenizers (like GPT-2, Llama, Tiktoken, or Hugging Face ByteLevel BPE) start with an initial vocabulary of <strong>only 256 raw bytes</strong>.</p>
+      
+      <div class="diagram-card">
+        <p><strong>The Untrained Comparison on the word "வணக்கம்" (vanakkam):</strong></p>
+        <p>In UTF-8, "வணக்கம்" takes 21 raw bytes.</p>
+        <ul>
+          <li><strong>Untrained Standard Tokenizer (0 merges):</strong>
+            <br>Knows nothing about Tamil. Outputs <strong>21 separate byte tokens</strong>:
+            <br><code>[&lt;0xE0&gt;, &lt;0xAE&gt;, &lt;0xB5&gt;, &lt;0xE0&gt;, &lt;0xAE&gt;, &lt;0xA3&gt; ... ]</code>
+            <br>Without training on millions of Tamil words, it is completely useless.</li>
+          <li><strong>This Tokenizer (0 merges):</strong>
+            <br>Ships with a pre-compiled base vocabulary of <strong>1,135 Tamil tokens</strong> inside <a href="../vocab.rs"><code>vocab.rs</code></a>.
+            <br>Outputs <strong>5 clean syllabic tokens</strong> on day zero:
+            <br><code>[வ (517), ண (361), க் (282), க (270), ம் (438)]</code></li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">The "Zero-Training" Meaning</div>
+        <p><strong>"Works without training"</strong> means the tokenizer can immediately encode and decode grammatically valid Tamil text into meaningful syllabic units right out of the box without running the BPE trainer.</p>
+        <p>Running the trainer is only needed if you want <em>additional compression</em> (merging those 5 syllables into 1 single word token <code>974</code>).</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Five Things This Repo Does Differently</h2>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">1,135 Base Vocab vs. 256 Bytes</div>
+            <p>Standard tokenizers start with 256 bytes and force the BPE merge budget to spend thousands of steps just rediscovering the Tamil alphabet. This repo pre-seeds all 12 vowels, 23 consonants, and 276 consonant-vowel combinations.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">528 Pre-Computed Conjunct Stems (<code>23 × 23</code>)</div>
+            <p>Clusters with a pulli (dot) like <code>ண்ட</code>, <code>த்த</code>, and <code>க்க</code> take 9 bytes in Unicode. Standard tokenizers burn 3 to 4 tokens per cluster. This repo includes all 528 pairs in the base vocabulary, cutting initial token counts across corpora immediately.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Indic Unicode Regex (<code>\p{M}*</code>) vs. English Regex</div>
+            <p>GPT-2 and Llama use regex tailored for English contractions (<code>'s, 't</code>). They often slice Tamil vowel signs away from consonants. This repo's regex groups combining marks (<code>\p{M}*</code>) so vowel signs stay glued to consonants.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">CSR Layout Merge Table vs. Hash Maps</div>
+            <p>Standard tokenizers use a large hash map for merge lookups. At 120,000 merges, hash probes blow past CPU hardware caches, dropping speed by 2.4x. This repo uses a bitset filter and a Compressed Sparse Row (CSR) table packed into 64-bit words, keeping lookups inside CPU cache lines.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Lossless Byte Fallback vs. <code>&lt;unk&gt;</code> Replacement</div>
+            <p>Unseen characters, emojis (<code>🔥</code>), and foreign symbols never turn into unknown token tags (<code>&lt;unk&gt;</code>). They decompose into <code>&lt;0xNN&gt;</code> byte tokens and decode back with 100% roundtrip fidelity.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">Why can this tokenizer encode Tamil text cleanly without any BPE training?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">It ships 1,135 pre-compiled base tokens.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It translates Tamil words into English first.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It skips all punctuation inside sentences.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It downloads dictionaries from Hugging Face.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0008-inference-priority-merges-and-byte-fallback.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 8: Inference: priority merges and byte fallback</span>
+      </a>
+      <a href="../lessons/0010-rust-syntax-to-read-this-codebase.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 10: The Rust you need to read this codebase</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 9 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> The 1,135 base tokens cover all Tamil letters, vowel signs, and conjunct stems right out of the box.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> The built-in 1,135 base tokens provide immediate coverage for Tamil vowels, consonants, and conjunct stems without training.';
+      }
+    }
+  </script>
+</body>
+</html>

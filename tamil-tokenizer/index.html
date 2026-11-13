@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamil Tokenizer: the learning path</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="index.html">Tamil Tokenizer</a>
+        <a href="index.html" class="here">Path</a>
+        <a href="reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="interview/dossier.html">Dossier</a>
+        <a href="docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+
+    <header>
+      <div class="lesson-badge">Start here</div>
+      <h1>The learning path</h1>
+      <p class="lead">Thirteen steps, in the order that actually makes sense. Every one has a Previous and a Next link, so you never have to guess where to go.</p>
+    </header>
+
+    <div class="hero">
+      <h1 style="font-size: 1.5rem;">If you read nothing else</h1>
+      <p>You are preparing for an interview on this repo. Read these four, in this order, and you can hold a conversation about the whole thing:</p>
+      <ol style="margin-bottom: 0.6rem;">
+        <li><a href="lessons/0001-entry-points-and-data-flow.html">Lesson 1: Entry points and data flow</a> - what the program does, 10 minutes</li>
+        <li><a href="lessons/0007-bpe-training-engine-and-pair-packing.html">Lesson 7: The BPE training engine</a> - the algorithm, 12 minutes</li>
+        <li><a href="lessons/0011-rust-systems-language-mental-model.html">Lesson 11: Rust as a systems language</a> - the language, 25 minutes</li>
+        <li><a href="interview/dossier.html">The interview dossier</a> - every decision and every number, 45 minutes</li>
+      </ol>
+      <a class="start" href="lessons/0001-entry-points-and-data-flow.html">Start with Lesson 1</a>
+    </div>
+
+    <section id="path">
+      <h2>The full path</h2>
+      <p>Five phases. The order matters: each one only makes sense once you have the one before it.</p>
+
+      <ol class="path">
+        <li>
+          <span class="phase">Orientation</span>
+          <span class="meta">Step 1 of 13, about 10 minutes</span>
+          <h3><a href="lessons/0001-entry-points-and-data-flow.html">Entry points and data flow</a></h3>
+          <p>What the program does, the three commands you actually run, and how text becomes token IDs. Everything else assumes this.</p>
+        </li>
+        <li>
+          <span class="phase">Orientation</span>
+          <span class="meta">Step 2 of 13, about 10 minutes</span>
+          <h3><a href="lessons/0002-tamil-orthography-and-conjunct-stems.html">Tamil orthography and conjunct stems</a></h3>
+          <p>Why Tamil needs its own tokenizer at all. The abugida, the pulli, the vowel signs, and why one base cluster costs three tokens without special treatment.</p>
+        </li>
+        <li>
+          <span class="phase">Orientation</span>
+          <span class="meta">Step 3 of 13, about 10 minutes</span>
+          <h3><a href="lessons/0003-conjunct-stems-math-and-vocabulary-bloat.html">Conjunct stems: the math and the vocabulary bloat</a></h3>
+          <p>The 528 stems that moved compression, and the measurement that rejected the 6,348 extra clusters. The most important trade-off in the repo.</p>
+        </li>
+        <li>
+          <span class="phase">The pipeline</span>
+          <span class="meta">Step 4 of 13, about 10 minutes</span>
+          <h3><a href="lessons/0004-pretokenization-and-the-unicode-regex.html">Pretokenization and the Unicode regex</a></h3>
+          <p>Why merges must not cross word boundaries, and how the pretokenizer sets the walls.</p>
+        </li>
+        <li>
+          <span class="phase">The pipeline</span>
+          <span class="meta">Step 5 of 13, about 15 minutes</span>
+          <h3><a href="lessons/0005-regex-and-unicode-properties-from-scratch.html">Regex and Unicode properties from scratch</a></h3>
+          <p>What <code>\p{L}</code> and <code>\p{M}</code> mean, and a full walk through the Tamil pattern.</p>
+        </li>
+        <li>
+          <span class="phase">The pipeline</span>
+          <span class="meta">Step 6 of 13, about 10 minutes</span>
+          <h3><a href="lessons/0006-regex-quantifiers-and-grouping-by-example.html">Regex quantifiers and grouping by example</a></h3>
+          <p>Plus, letters, braces and groups, with the one missing-pipe bug that broke the pretokenizer.</p>
+        </li>
+        <li>
+          <span class="phase">The algorithm</span>
+          <span class="meta">Step 7 of 13, about 12 minutes</span>
+          <h3><a href="lessons/0007-bpe-training-engine-and-pair-packing.html">The BPE training engine and 64-bit pair packing</a></h3>
+          <p>The four phases of the training loop, and the three systems tricks that made it finish in seconds instead of hours.</p>
+        </li>
+        <li>
+          <span class="phase">The algorithm</span>
+          <span class="meta">Step 8 of 13, about 12 minutes</span>
+          <h3><a href="lessons/0008-inference-priority-merges-and-byte-fallback.html">Inference: priority merges, CSR layout, byte fallback</a></h3>
+          <p>What happens at encode time, why the merge table is shaped the way it is, and why nothing is ever dropped.</p>
+        </li>
+        <li>
+          <span class="phase">The algorithm</span>
+          <span class="meta">Step 9 of 13, about 10 minutes</span>
+          <h3><a href="lessons/0009-tamil-tokenizer-vs-standard-and-zero-training.html">How this differs from the standard, and the zero-training base</a></h3>
+          <p>The five things this repo does that a general-purpose tokenizer does not, and what "works without training" actually means.</p>
+        </li>
+        <li>
+          <span class="phase">The language</span>
+          <span class="meta">Step 10 of 13, about 15 minutes</span>
+          <h3><a href="lessons/0010-rust-syntax-to-read-this-codebase.html">The Rust you need to read this codebase</a></h3>
+          <p>Every type, operator and pattern in the repo, translated into terms you already know.</p>
+        </li>
+        <li>
+          <span class="phase">The language</span>
+          <span class="meta">Step 11 of 13, about 25 minutes</span>
+          <h3><a href="lessons/0011-rust-systems-language-mental-model.html">Rust as a systems language</a></h3>
+          <p>Ownership, borrowing, memory layout, traits, and why the code packs bits into integers. This is the one that makes the rest click.</p>
+        </li>
+        <li>
+          <span class="phase">Shipping</span>
+          <span class="meta">Step 12 of 13, about 20 minutes</span>
+          <h3><a href="lessons/0012-canonical-model-and-hf-export.html">The canonical model and the Hugging Face export</a></h3>
+          <p>How two engines ended up emitting identical token IDs, the promotion merge algorithm, and the export that writes five files.</p>
+        </li>
+        <li>
+          <span class="phase">Capstone</span>
+          <span class="meta">Step 13 of 13, about 45 minutes</span>
+          <h3><a href="interview/dossier.html">The interview dossier</a></h3>
+          <p>Every decision from all 130 commits with its evidence and commit hash, every measured number with its source, a stale-number trap list, and a five-minute demo script.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="shortcuts">
+      <h2>Shortcuts by goal</h2>
+      <div class="cols">
+        <div class="col">
+          <h3>Interview in 2 hours</h3>
+          <ul>
+            <li>Lessons 1, 7, 11, 12</li>
+            <li>Then the dossier sections 1, 3, 6, 7</li>
+          </ul>
+          <p>That covers the story, the algorithm, the language, the hard part, and the traps.</p>
+        </div>
+        <div class="col">
+          <h3>Understand the code, not the interview</h3>
+          <ul>
+            <li>Lessons 1 through 12 in order</li>
+            <li>Then read the five core modules top to bottom</li>
+          </ul>
+          <p>About four hours of lessons. The <a href="reference/architecture-cheat-sheet.html">cheat sheet</a> is the one-page version.</p>
+        </div>
+        <div class="col">
+          <h3>Just the numbers</h3>
+          <ul>
+            <li><a href="interview/dossier.html#numbers">Dossier section 4</a></li>
+            <li><a href="interview/dossier.html#corpus">Dossier section 5</a> for the corpus</li>
+            <li><a href="docs/RESULTS.md">docs/RESULTS.md</a> for the full tables</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>Learn the language first</h3>
+          <ul>
+            <li>Lesson 10: syntax</li>
+            <li>Lesson 11: the systems mental model</li>
+            <li>Then go back to lesson 1</li>
+          </ul>
+          <p>Best if you have never written a systems language before.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="reference">
+      <h2>Reference material</h2>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.93rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">File</th>
+              <th style="padding: 0.5rem;">What it is</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><a href="reference/architecture-cheat-sheet.html">reference/architecture-cheat-sheet.html</a></td>
+              <td style="padding: 0.5rem;">One page. The whole pipeline and the five modules. Print this.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><a href="GLOSSARY.md">GLOSSARY.md</a></td>
+              <td style="padding: 0.5rem;">Canonical terms for Tamil orthography and BPE, with what to avoid calling them.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><a href="docs/DEVELOPMENT.md">docs/DEVELOPMENT.md</a></td>
+              <td style="padding: 0.5rem;">Project layout, architecture, how encoding works, what each measurement script settles.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><a href="docs/USAGE.md">docs/USAGE.md</a></td>
+              <td style="padding: 0.5rem;">Every CLI command, the Rust API, and the Hugging Face export.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><a href="docs/RESULTS.md">docs/RESULTS.md</a></td>
+              <td style="padding: 0.5rem;">Every measured number with its caveats. Longer than the dossier, more detail on the tables.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><a href="learning/01_mental_model_and_tokenization_basics.md">learning/01</a> to <a href="learning/04_interview_qa_mastery.md">learning/04</a></td>
+              <td style="padding: 0.5rem;">Long-form markdown study notes: mental model, architecture deep dive, commit chronology, the older Q&amp;A guide.</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><a href="learning-records/0001-baseline-prior-knowledge.md">learning-records/</a></td>
+              <td style="padding: 0.5rem;">What you had already mastered, written down as you went. Ten entries.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="practice">
+      <h2>While you read, run these</h2>
+      <div class="diagram-card">
+        <pre><code># The base vocabulary, with no training at all
+cargo run --release --bin vocabcount
+
+# Train from the sample corpus
+cargo run --release --bin train -- ./data/tamil_corpus.txt 50000 ./output/demo.json
+
+# Encode, and watch the byte fallback
+cargo run --release --bin encode -- ./output/demo.json "வணக்கம்! க்ஷ ஸ்ரீ 🎉"
+
+# Export to Hugging Face and prove the two engines agree
+cargo run --release --bin export_hf -- ./output/demo.json ./output/demo_hf
+cargo build --release --bin encode_lines
+.venv/Scripts/python.exe scripts/verify_hf_export.py ./output/demo.json ./output/demo_hf data/tamil_wiki_clean.txt 200
+
+# Throughput, single thread against rayon
+cargo run --release --bin bench -- ./output/demo.json data/tamil_wiki_clean.txt 16777216</code></pre>
+      </div>
+    </section>
+
+    <footer>
+      <p>Tamil Tokenizer learning path. The repository README is at <a href="README.md">README.md</a>. Built for someone who has never worked in a systems language.</p>
+    </footer>
+  </div>
+</body>
+</html>

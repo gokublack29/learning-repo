@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tamil Tokenizer: Interview Dossier</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html" class="here">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Interview Dossier</div>
+      <h1>Tamil Tokenizer: every decision, every number</h1>
+      <p class="lead">Built by walking all 130 commits and reproducing the load-bearing measurements. Use it to answer the question, then to answer the three follow-ups behind it.</p>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.75rem;">
+        Every number below carries its source. Numbers marked <strong>stale</strong> are still in the repo but no longer true.
+        Do not quote them.
+      </p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 13 of 13.</strong> <span class="dim">Capstone. Every decision, every number, and the questions to expect.</span>
+    </div>
+
+    <div class="diagram-card">
+      <div class="step-title">Contents</div>
+      <ol style="margin: 0.5rem 0 0; padding-left: 1.4rem; font-size: 0.92rem; line-height: 1.9;">
+        <li><a href="#pitch">The 90-second answer</a></li>
+        <li><a href="#arch">Architecture in one screen</a></li>
+        <li><a href="#ledger">The decision ledger</a></li>
+        <li><a href="#numbers">Measured numbers, with provenance</a></li>
+        <li><a href="#corpus">The training corpus in full</a></li>
+        <li><a href="#qa">Question bank with follow-ups</a></li>
+        <li><a href="#traps">Traps: numbers that will bite you</a></li>
+        <li><a href="#demo">The five-minute live demo</a></li>
+        <li><a href="#unknown">What you genuinely cannot answer</a></li>
+      </ol>
+    </div>
+
+    <section id="pitch">
+      <h2>1. The 90-second answer</h2>
+      <div class="diagram-card">
+        <p>I built a byte-level BPE tokenizer for Tamil in Rust, and then spent most of the effort proving that it actually helps.</p>
+        <p>The problem: general-purpose tokenizers have almost no Tamil subwords, so Tamil text collapses toward one token per UTF-8 byte. Tamil is a three-byte script, so a Tamil word costs 10 to 14 tokens where an English word costs about 1.3. That is the tokenizer tax: slower inference, higher API cost, faster context exhaustion.</p>
+        <p>My approach had two halves. First, a Tamil-aware base vocabulary of 1,135 tokens built from the script itself: the 256 byte tokens, the 12 independent vowels, the 23 consonants, the 276 consonant-plus-vowel-sign clusters, the 528 conjunct stems, and the ligatures. Conjunct stems are the part that mattered. Tamil joins consonants constantly, so <code>க்ஷ</code> and <code>ண்ட</code> used to cost three or four tokens each. I also measured the obvious next step, 6,348 more tokens with vowel signs attached, and rejected it: the base vocabulary grew to about 7,000 and it ate the merge budget, making held-out compression worse.</p>
+        <p>Second, systems work in Rust. The trainer counts pairs in packed 64-bit keys and runs on rayon. The encoder replaced a hash map with a compressed sparse row layout after profiling showed the map stopped fitting in cache at 120,000 merges. It runs at 47 MB/s on a batch.</p>
+        <p>Then the part I would defend hardest. The Rust encoder and the Hugging Face export disagreed on 20 percent of lines for six commits. The cause was architectural: each side built its own model. I fixed it by putting both on one shared canonical model, which rebuilds the 819 base clusters out of single characters using promotion merges. Both engines now emit identical IDs on 100 percent of inputs, and the publish script refuses to upload an artifact that disagrees.</p>
+        <p>And then I measured whether any of it mattered. Bits per byte, not loss per token, because loss per token cannot compare tokenizers with different vocabulary sizes. On a matched 20 million token budget our model scores 0.9193 bits per byte on Tamil Wikipedia against 1.0123 for <code>indictok-256k</code> and 1.2575 for mBERT. On six-class Tamil news headline classification, 55.8 percent against 39.3 and 39.4. I also ran the control that a critic would ask for: the same 250 MB of text for every tokenizer. The ranking did not move.</p>
+      </div>
+    </section>
+
+    <section id="arch">
+      <h2>2. Architecture in one screen</h2>
+      <div class="diagram-card">
+        <pre><code>text
+  │
+  ▼
+┌──────────────────────┐   pretokenizer.rs   Unicode regex, Tamil-aware
+│  Pretokenizer        │   splits into chunks, so merges cannot cross a
+└──────────────────────┘   word or punctuation boundary
+  │
+  ▼
+┌──────────────────────┐   model.rs   ONE vocab + ONE merge list
+│  Canonical model     │   = trained vocab + missing chars + 256 byte
+└──────────────────────┘   tokens + 819 promotion merges ahead of
+  │                        the learned merges
+  ▼
+┌──────────────────────┐   encoder.rs   CSR merge table, per-pair rule
+│  BPE merges          │   cache, one scratch buffer per text
+└──────────────────────┘
+  │
+  ▼
+token IDs  (u32)
+
+DECODE: <0xNN> token contributes its byte; every other token contributes
+its literal text. Then the bytes are read as UTF-8.
+</code></pre>
+      </div>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.45rem;">Module</th>
+              <th style="padding: 0.45rem;">Owns</th>
+              <th style="padding: 0.45rem;">Size</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>pretokenizer.rs</code></td><td style="padding: 0.45rem;">The Unicode regex that slices text into chunks</td><td style="padding: 0.45rem;">75 lines</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>vocab.rs</code></td><td style="padding: 0.45rem;">The 1,135-token base vocab and the GPT-2 byte table</td><td style="padding: 0.45rem;">329 lines</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>trainer.rs</code></td><td style="padding: 0.45rem;">Parallel BPE training, packed pair keys, priority queue</td><td style="padding: 0.45rem;">631 lines</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>model.rs</code></td><td style="padding: 0.45rem;">The canonical model both engines read</td><td style="padding: 0.45rem;">166 lines</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>encoder.rs</code></td><td style="padding: 0.45rem;">Fast encode and decode, CSR merge table</td><td style="padding: 0.45rem;">571 lines</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>lib.rs</code></td><td style="padding: 0.45rem;">Module roots, re-exports, the JSON loaders</td><td style="padding: 0.45rem;">65 lines</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;"><code>export_hf.rs</code></td><td style="padding: 0.45rem;">Writes the five Hugging Face artifacts</td><td style="padding: 0.45rem;">237 lines</td></tr>
+            <tr><td style="padding: 0.45rem;"><code>tests/lib.rs</code></td><td style="padding: 0.45rem;">50 tests, including a brute-force BPE oracle</td><td style="padding: 0.45rem;">897 lines</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">The binaries, and the question each one answers</div>
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 0.5rem;">
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>train</code></td><td style="padding: 0.4rem;">Train a tokenizer from a corpus file</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>main</code></td><td style="padding: 0.4rem;">Interactive encode and decode REPL</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>encode</code> / <code>decode</code></td><td style="padding: 0.4rem;">One string to IDs, and back</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>score</code></td><td style="padding: 0.4rem;">Bytes per token and tokens per word on a held-out split, in process</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>bench</code></td><td style="padding: 0.4rem;">Throughput, single thread against rayon</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>profile_encode</code></td><td style="padding: 0.4rem;">Where encode time goes: pretokenize against merges</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>benchmark</code></td><td style="padding: 0.4rem;">Corpus-level compression report</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>export_hf</code></td><td style="padding: 0.4rem;">Write the Hugging Face artifacts</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>encode_lines</code></td><td style="padding: 0.4rem;">JSON IDs per stdin line, for the Python verification script</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>bench_encode</code> / <code>bench_speed</code></td><td style="padding: 0.4rem;">JSON throughput reports for the scripts</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>vocabcount</code></td><td style="padding: 0.4rem;">Print the base vocab breakdown and assert it sums to the real size</td></tr>
+            <tr><td style="padding: 0.4rem;"><code>test_special_tokens</code></td><td style="padding: 0.4rem;">Special token integration check</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="ledger">
+      <h2>3. The decision ledger</h2>
+      <p>This is the spine of the interview. Each row is a decision you made, the problem behind it, what you rejected, the evidence, and where it stands now.</p>
+
+      <h3>Base vocabulary and script knowledge</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Decision</th>
+              <th style="padding: 0.4rem;">Problem it solved</th>
+              <th style="padding: 0.4rem;">Rejected alternative</th>
+              <th style="padding: 0.4rem;">Evidence</th>
+              <th style="padding: 0.4rem;">Commit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Seed BPE with a Tamil-aware base vocab, not raw bytes</td>
+              <td style="padding: 0.4rem;">Raw byte BPE spends thousands of merges just assembling a Tamil letter</td>
+              <td style="padding: 0.4rem;">Train from bytes only</td>
+              <td style="padding: 0.4rem;">Base vocab works with zero training</td>
+              <td style="padding: 0.4rem;"><code>247c253</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add the 528 conjunct stems (consonant + pulli + consonant)</td>
+              <td style="padding: 0.4rem;">Tamil joins consonants constantly, so each conjunct cost 3 to 4 tokens</td>
+              <td style="padding: 0.4rem;">Grantha consonants alone, which barely moved anything</td>
+              <td style="padding: 0.4rem;">Grantha-heavy 9.885 to 9.759, wiki and IndicCorp both up</td>
+              <td style="padding: 0.4rem;"><code>5d7ba63</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Reject the 6,348 three-part clusters with a trailing vowel sign</td>
+              <td style="padding: 0.4rem;">Base vocab would reach about 7,000 and starve the fixed 30K merge budget</td>
+              <td style="padding: 0.4rem;">Full C + pulli + C + vowel sign clusters</td>
+              <td style="padding: 0.4rem;">Held-out compression degraded 10.156 to 10.855 on wiki, 10.071 to 10.936 on IndicCorp</td>
+              <td style="padding: 0.4rem;"><code>5d7ba63</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add the 5 Grantha consonants and 15 ligatures</td>
+              <td style="padding: 0.4rem;">Grantha-heavy text fell apart without them</td>
+              <td style="padding: 0.4rem;">Traditional 18 consonants only</td>
+              <td style="padding: 0.4rem;">Grantha column of the base vocab comparison</td>
+              <td style="padding: 0.4rem;"><code>22719e1</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Match GPT-2's byte table exactly</td>
+              <td style="padding: 0.4rem;">Our table sent bytes 127 to 255 to U+0100+, so every exported model silently produced different IDs in Python</td>
+              <td style="padding: 0.4rem;">Keep our own table</td>
+              <td style="padding: 0.4rem;">Test asserts <code>encoder[0xC3] == 'Ã'</code> and the space maps to U+0120</td>
+              <td style="padding: 0.4rem;"><code>b90ddbd</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Training algorithm</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Decision</th>
+              <th style="padding: 0.4rem;">Problem it solved</th>
+              <th style="padding: 0.4rem;">Rejected alternative</th>
+              <th style="padding: 0.4rem;">Evidence</th>
+              <th style="padding: 0.4rem;">Commit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Re-push stale heap entries with their corrected count instead of dropping them</td>
+              <td style="padding: 0.4rem;">The heap pops the highest count first, so the entries that go stale at the top are exactly the frequent pairs. Dropping them made the trainer spend merges on second-best candidates, permanently</td>
+              <td style="padding: 0.4rem;">Discard stale entries (the original code)</td>
+              <td style="padding: 0.4rem;"><strong>10.156 to 13.468 bytes per token at 30K, 25 percent fewer tokens, 44,642 corrections over 30,000 merges</strong></td>
+              <td style="padding: 0.4rem;"><code>d42a27b</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Sort unique words before minting token IDs</td>
+              <td style="padding: 0.4rem;">Walking the hash map minted IDs in hash order, and the merge tie-break compares packed IDs, so two runs produced different models</td>
+              <td style="padding: 0.4rem;">Iterate the hash map directly</td>
+              <td style="padding: 0.4rem;">CI job re-introduces the defect and requires the suite to fail</td>
+              <td style="padding: 0.4rem;"><code>d42a27b</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Keep BPE, do not build a Unigram trainer</td>
+              <td style="padding: 0.4rem;">The literature suggested Unigram might win for Tamil, on an unsourced claim</td>
+              <td style="padding: 0.4rem;">Hand-rolled Unigram, and SentencePiece Unigram</td>
+              <td style="padding: 0.4rem;">Unigram beat BPE by 0.64 percent on wiki and 0.67 percent on IndicCorp. The hand-rolled one scored 5.579 bytes per token against BPE's 10.156, worse by 1.8x, with 26.6 percent of emitted tokens being single characters</td>
+              <td style="padding: 0.4rem;"><code>d42a27b</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Make the frequency floor configurable, default 1</td>
+              <td style="padding: 0.4rem;">A hard floor of 2 made the head-to-head against Hugging Face measure merge budget rather than algorithm</td>
+              <td style="padding: 0.4rem;">Hard-coded floor of 2, then hard-coded floor of 1</td>
+              <td style="padding: 0.4rem;">Capping HF at our 297 merges gave 1,873 tokens against our 1,865, identical. The gap was budget, 793 against 297, not algorithm</td>
+              <td style="padding: 0.4rem;"><code>0cc00ce</code>, <code>3773a1a</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Pack the pair key into one u64</td>
+              <td style="padding: 0.4rem;">A tuple key is not a scalar, so hashing it means hashing two integers and combining, on millions of lookups</td>
+              <td style="padding: 0.4rem;">(u32, u32) tuple as the hash map key</td>
+              <td style="padding: 0.4rem;">No single number recorded, this is a constant-factor change</td>
+              <td style="padding: 0.4rem;"><code>22719e1</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Systems and Rust</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Decision</th>
+              <th style="padding: 0.4rem;">Problem it solved</th>
+              <th style="padding: 0.4rem;">Rejected alternative</th>
+              <th style="padding: 0.4rem;">Evidence</th>
+              <th style="padding: 0.4rem;">Commit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Replace the merge hash map with a CSR table indexed by first token</td>
+              <td style="padding: 0.4rem;">At 120K merges the map stopped fitting in cache and every probe missed. Each token is the result of at most one merge, so pairs starting with a given ID are few and contiguous when sorted</td>
+              <td style="padding: 0.4rem;">Hash map on the pair; a linked list plus min-heap merge loop</td>
+              <td style="padding: 0.4rem;">The map cost <strong>17.4 to 7.3 MB/s</strong>, a 2.4x loss. The heap merge loop was byte-identical but within noise on throughput, because chunks average about 19 bytes</td>
+              <td style="padding: 0.4rem;"><code>89b1bbb</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add a bitset of merge-starting tokens</td>
+              <td style="padding: 0.4rem;">Most adjacent pairs have no rule at all, and that check should not touch the two large arrays</td>
+              <td style="padding: 0.4rem;">Always reading the offsets and data arrays</td>
+              <td style="padding: 0.4rem;">One bit test answers it in O(1) without a cache miss</td>
+              <td style="padding: 0.4rem;"><code>89b1bbb</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Reuse one scratch buffer per text instead of one per chunk</td>
+              <td style="padding: 0.4rem;">The pretokenizer averages about 19 bytes per chunk, so a fresh Vec per chunk is an allocation per handful of bytes</td>
+              <td style="padding: 0.4rem;">Allocate a Vec per chunk</td>
+              <td style="padding: 0.4rem;"><strong>No measured effect recorded anywhere.</strong> Say so if asked</td>
+              <td style="padding: 0.4rem;"><code>d2814de</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Pack (second token, rank, new ID) into one u64 word</td>
+              <td style="padding: 0.4rem;">The table is read once per adjacent pair per merge, so halving its size halves the cache misses</td>
+              <td style="padding: 0.4rem;">A struct of three u32s per entry</td>
+              <td style="padding: 0.4rem;">21 bits each, 63 of 64 bits used</td>
+              <td style="padding: 0.4rem;"><code>89b1bbb</code>, <code>24846a6</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Drop the Aho-Corasick base automaton</td>
+              <td style="padding: 0.4rem;">It seeded a chunk with the longest base cluster, which Hugging Face cannot express, and that was the root cause of the parity gap</td>
+              <td style="padding: 0.4rem;">Keep greedy longest-match seeding and teach the export to match</td>
+              <td style="padding: 0.4rem;">Impossible: HF BPE has no seed-symbol concept. The dependency was removed from Cargo.toml</td>
+              <td style="padding: 0.4rem;"><code>24846a6</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Hugging Face parity and correctness</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Decision</th>
+              <th style="padding: 0.4rem;">Problem it solved</th>
+              <th style="padding: 0.4rem;">Rejected alternative</th>
+              <th style="padding: 0.4rem;">Evidence</th>
+              <th style="padding: 0.4rem;">Commit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Export with a <code>Split</code> pretokenizer carrying our regex, not HF's <code>ByteLevel</code></td>
+              <td style="padding: 0.4rem;">HF's ByteLevel hardcodes GPT-2's pattern and byte-maps the text before BPE sees it, so no raw-text merge in our file could ever match</td>
+              <td style="padding: 0.4rem;">ByteLevel, or byte-mapping inside a pretokenizer</td>
+              <td style="padding: 0.4rem;">With ByteLevel, ID agreement was <strong>0 percent</strong></td>
+              <td style="padding: 0.4rem;"><code>3b659fd</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add byte fallback to the export</td>
+              <td style="padding: 0.4rem;">With <code>unk_token: null</code> and no byte fallback, HF silently dropped any character absent from the vocab</td>
+              <td style="padding: 0.4rem;">256 individual <code>Replace</code> decoder rules</td>
+              <td style="padding: 0.4rem;">One entry instead of 256 rules, and it cannot drift from the token names</td>
+              <td style="padding: 0.4rem;"><code>71d38c2</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Decoder is ByteFallback alone, never ByteLevel after it</td>
+              <td style="padding: 0.4rem;">ByteLevel re-applies the GPT-2 table to ByteFallback's output, so a decoded <code>é</code> became raw byte 0xE9 and then U+FFFD. Silent corruption, not a token count issue</td>
+              <td style="padding: 0.4rem;">Sequence of ByteFallback then ByteLevel; a prepended <code>Replace</code></td>
+              <td style="padding: 0.4rem;">Before: 2,074 of 3,988 Latin-1 lines corrupted. After: zero. Decode fidelity 95.7 to 100 percent</td>
+              <td style="padding: 0.4rem;"><code>706131c</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">One shared <code>canonical_model()</code> instead of two model builders</td>
+              <td style="padding: 0.4rem;">The export added byte tokens and promotion merges the encoder never saw, and the encoder seeded a chunk with the longest base cluster while HF seeds with characters. Two models produce two tokenizations</td>
+              <td style="padding: 0.4rem;">Keep both code paths in sync by hand; register base clusters as <code>added_tokens</code></td>
+              <td style="padding: 0.4rem;">Added tokens measured <strong>0 percent agreement</strong>, because HF extracts them before BPE runs. Sharing the model took ID agreement from 71.8 to <strong>100 percent</strong> and the token count difference to <strong>0.0 percent</strong></td>
+              <td style="padding: 0.4rem;"><code>24846a6</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Build promotion merges that rebuild each base cluster from characters, ranked ahead of the learned merges</td>
+              <td style="padding: 0.4rem;">HF BPE has no base-symbol set, so a token like <code>க்ஷ</code> is unreachable unless a merge produces it</td>
+              <td style="padding: 0.4rem;">A flat greedy pass, or a plain prefix split</td>
+              <td style="padding: 0.4rem;">A flat pass takes the whole token as one part and emits nothing. A plain prefix split cannot build <code>ஸ்ரீ</code>, since <code>ஸ்ர</code> is not a token while <code>ஸ்ர</code> and <code>ரீ</code> both are</td>
+              <td style="padding: 0.4rem;"><code>3b659fd</code>, <code>24846a6</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Gate the publish on ID agreement, floor 99.0, not decode fidelity alone</td>
+              <td style="padding: 0.4rem;">A 71.8 percent agreement export would have shipped silently</td>
+              <td style="padding: 0.4rem;">Gate on decode only; publish while accepting 79 percent</td>
+              <td style="padding: 0.4rem">Current export measures 100.0 percent, so it clears the floor with a point of headroom</td>
+              <td style="padding: 0.4rem;"><code>b8c1ee0</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Fix the special token config: <code>model_max_length</code> unlimited, <code>eos_token</code> resolves, <code>clean_up_tokenization_spaces</code> off</td>
+              <td style="padding: 0.4rem;">A default of 512 silently truncated any caller's input under <code>truncation=True</code>, and an empty-string EOS resolved to no token</td>
+              <td style="padding: 0.4rem;">Keep the 512 default, keep transformers' whitespace cleanup on</td>
+              <td style="padding: 0.4rem;">eos_token_id went from falling back to unk, to resolving. model_max_length went from 512 to u64::MAX</td>
+              <td style="padding: 0.4rem;"><code>042da20</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Corpus</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Decision</th>
+              <th style="padding: 0.4rem;">Problem it solved</th>
+              <th style="padding: 0.4rem;">Rejected alternative</th>
+              <th style="padding: 0.4rem;">Evidence</th>
+              <th style="padding: 0.4rem;">Commit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Strip MediaWiki markup and gate on Tamil dominance</td>
+              <td style="padding: 0.4rem;">About a quarter of the early merges were ASCII markup fragments like <code>colo+r</code> and <code>j+pg</code></td>
+              <td style="padding: 0.4rem;">The old cleaner, which had no dominance test</td>
+              <td style="padding: 0.4rem;">8.31 to 10.76 bytes per token at 30K. 127,889 lines to 111,956 kept</td>
+              <td style="padding: 0.4rem;"><code>5e4d55b</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add a third held-out domain: Tamil YouTube transcripts</td>
+              <td style="padding: 0.4rem;">Every published number came from the training distribution, and prose-tuned tokenizers look better on prose than they have any right to</td>
+              <td style="padding: 0.4rem;">Keep scoring on the corpora we trained on</td>
+              <td style="padding: 0.4rem;">On the Latin-heavy subset we <strong>lost by 2 percent</strong>, which is exactly the place this corpus is for</td>
+              <td style="padding: 0.4rem;"><code>9e5e76d</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Split transcripts by video, not by line</td>
+              <td style="padding: 0.4rem;">Captions from one video are contiguous utterances of one speaker, so a line split puts near-duplicate sentences on both sides</td>
+              <td style="padding: 0.4rem;">Line-level split</td>
+              <td style="padding: 0.4rem;">SHA-256 hash bucket over the video ID: 278 test videos, 1,122 train videos</td>
+              <td style="padding: 0.4rem;"><code>9e5e76d</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add transcripts to the training mix</td>
+              <td style="padding: 0.4rem;">The transcripts split was a diagnosis with no remedy</td>
+              <td style="padding: 0.4rem;">Keep wiki + IndicCorp only</td>
+              <td style="padding: 0.4rem;">Transcripts column <strong>+11.9 percent</strong> (12.553 to 14.050), costing 1.1 percent on wiki and 0.8 percent on IndicCorp. Latin-heavy went from losing 2 percent to an 11 percent lead</td>
+              <td style="padding: 0.4rem;"><code>0c8d197</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Prepend a dummy space to every training line</td>
+              <td style="padding: 0.4rem;">The pretokenizer attaches one leading space to mid-line chunks but not to the first chunk of a line, so line-initial words never earn merges</td>
+              <td style="padding: 0.4rem;">No change. Score the unprefixed held-out split, because that is what real input looks like</td>
+              <td style="padding: 0.4rem;">13.468 to 13.294 bytes per token, <strong>+1.29 percent</strong>, against an adopt threshold of 0.5 percent. Cost: MorphScore recall 0.6352 to 0.5129, so -19 percent</td>
+              <td style="padding: 0.4rem;"><code>bd20af7</code>, <code>f3d5680</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Mix only pays at a large merge budget</td>
+              <td style="padding: 0.4rem;">The roadmap recommended a mix with no mention of budget, which would have been the wrong call for a 32K model</td>
+              <td style="padding: 0.4rem;">Always mix, regardless of budget</td>
+              <td style="padding: 0.4rem;">At 30K the mix loses to wiki-only on wiki. At 120K it ties the best specialist on each domain, inside 0.6 percent. Also: upsampling wiki 8x produces a byte-identical model, so volume is irrelevant and diversity is what costs</td>
+              <td style="padding: 0.4rem;"><code>1c2cde1</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Evaluation and process</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Decision</th>
+              <th style="padding: 0.4rem;">Problem it solved</th>
+              <th style="padding: 0.4rem;">Rejected alternative</th>
+              <th style="padding: 0.4rem;">Evidence</th>
+              <th style="padding: 0.4rem;">Commit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Score bits per byte, not loss per token</td>
+              <td style="padding: 0.4rem;">A tokenizer that packs more text into a token has fewer tokens to spread the loss over, so per-token loss is not comparable</td>
+              <td style="padding: 0.4rem;">Perplexity or loss per token</td>
+              <td style="padding: 0.4rem;">The whole downstream table is scored this way</td>
+              <td style="padding: 0.4rem;"><code>f7629fa</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Add the byte-matched control</td>
+              <td style="padding: 0.4rem;">A fixed token budget gives the better-compressing tokenizer more text, so the table cannot separate segmentation from coverage</td>
+              <td style="padding: 0.4rem;">Token-budget comparison alone</td>
+              <td style="padding: 0.4rem;">Same 250 MB for every tokenizer: ours 0.9190, indictok 1.0123, mBERT 1.2573. Ranking and margins unchanged. mBERT's text doubled and its bits per byte did not move</td>
+              <td style="padding: 0.4rem;"><code>8ca12c2</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Three seeds per tokenizer, and a paired bootstrap on the classification task</td>
+              <td style="padding: 0.4rem;">One run cannot tell a real gap from run-to-run spread, and the fine-tune seed spread is up to 0.13 accuracy</td>
+              <td style="padding: 0.4rem;">Single seed, single run</td>
+              <td style="padding: 0.4rem;">Within-tokenizer spread at most 0.0022 bits per byte against a smallest gap of 0.072, so 33 times beyond the noise. Bootstrap gives +16.50 points, 95 percent CI +14.70 to +18.31</td>
+              <td style="padding: 0.4rem;"><code>69e82bb</code>, <code>957a714</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Score the task, not just the loss</td>
+              <td style="padding: 0.4rem;">Bits per byte measures loss, not task accuracy. CHiPSAL 2026 found tokenizer choice changes accuracy on Tamil news-title classification</td>
+              <td style="padding: 0.4rem;">Stop at bits per byte</td>
+              <td style="padding: 0.4rem;">0.5583 accuracy and 0.4883 macro F1 against 0.3932 and 0.3936. Both competitors scored 0.00 F1 on politics and world and never emitted either label</td>
+              <td style="padding: 0.4rem;"><code>744698f</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Raise the fine-tune learning rate from 1e-4 to 1e-3</td>
+              <td style="padding: 0.4rem;">At 1e-4 every model collapsed to the majority class</td>
+              <td style="padding: 0.4rem;">The 1e-4 default</td>
+              <td style="padding: 0.4rem;">The collapsed run was discarded. The script now defaults to 1e-3</td>
+              <td style="padding: 0.4rem;"><code>2703306</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Measure morphological alignment separately</td>
+              <td style="padding: 0.4rem;">Compression alone does not show that the boundaries are meaningful</td>
+              <td style="padding: 0.4rem;">Treat bytes per token as a quality proxy</td>
+              <td style="padding: 0.4rem">MorphScore over 1,195 Tamil word forms from UD_Tamil-TTB. Ours 0.709 recall, mBERT 0.480, and the prefix costs 19 percent recall</td>
+              <td style="padding: 0.4rem;"><code>91b6970</code>, <code>2bbfc74</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="numbers">
+      <h2>4. Measured numbers, with provenance</h2>
+
+      <h3>Compression on held-out splits</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Training corpus</th>
+              <th style="padding: 0.4rem;">Merges</th>
+              <th style="padding: 0.4rem;">wiki</th>
+              <th style="padding: 0.4rem;">IndicCorp</th>
+              <th style="padding: 0.4rem;">transcripts</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">wiki 25 MB</td><td style="padding: 0.4rem;">30K</td><td style="padding: 0.4rem;">13.115</td><td style="padding: 0.4rem;">13.053</td><td style="padding: 0.4rem;">9.049</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">IndicCorp 199 MB</td><td style="padding: 0.4rem;">30K</td><td style="padding: 0.4rem;">12.531</td><td style="padding: 0.4rem;">14.244</td><td style="padding: 0.4rem;">10.763</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">mixed 25 wiki + 199 ic</td><td style="padding: 0.4rem;">30K</td><td style="padding: 0.4rem;">12.857</td><td style="padding: 0.4rem;">14.222</td><td style="padding: 0.4rem;">10.676</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">wiki 25 MB</td><td style="padding: 0.4rem;">120K</td><td style="padding: 0.4rem;">14.784</td><td style="padding: 0.4rem;">14.900</td><td style="padding: 0.4rem;">10.210</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">IndicCorp 199 MB</td><td style="padding: 0.4rem;">120K</td><td style="padding: 0.4rem;">14.664</td><td style="padding: 0.4rem;">16.431</td><td style="padding: 0.4rem;">12.596</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">mixed 25 wiki + 199 ic</td><td style="padding: 0.4rem;">120K</td><td style="padding: 0.4rem;">14.877</td><td style="padding: 0.4rem;">16.386</td><td style="padding: 0.4rem;">12.553</td></tr>
+            <tr style="border-bottom: 2px solid var(--border); background: var(--accent-soft);"><td style="padding: 0.4rem;"><strong>mixed + 71 transcripts (published)</strong></td><td style="padding: 0.4rem;">120K</td><td style="padding: 0.4rem;"><strong>14.720</strong></td><td style="padding: 0.4rem;"><strong>16.251</strong></td><td style="padding: 0.4rem;"><strong>14.050</strong></td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.6rem;">Bytes per token, higher is better, held-out splits only. Source: <code>docs/RESULTS.md:102-113</code>. Reproduce with <code>score</code> on <code>output/v5_mixed_120000_prefixed.json</code>. "71" is MB of transcripts, not a count of transcripts. Nobody defines this in the README. Say what it means if you use it.</p>
+      </div>
+
+      <h3>Downstream language model: the same model, three tokenizers</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">tokenizer</th>
+              <th style="padding: 0.4rem;">vocab</th>
+              <th style="padding: 0.4rem;">params</th>
+              <th style="padding: 0.4rem;">text seen</th>
+              <th style="padding: 0.4rem;">wiki bpb</th>
+              <th style="padding: 0.4rem;">transcripts bpb</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border); background: var(--accent-soft);"><td style="padding: 0.4rem;"><strong>ours</strong></td><td style="padding: 0.4rem;">122,723</td><td style="padding: 0.4rem;">58.0M</td><td style="padding: 0.4rem;"><strong>309 MB, all of it</strong></td><td style="padding: 0.4rem;"><strong>0.9193</strong></td><td style="padding: 0.4rem;"><strong>0.9150</strong></td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>indictok-256k</code></td><td style="padding: 0.4rem;">256,000</td><td style="padding: 0.4rem;">109.1M</td><td style="padding: 0.4rem;">257 MB</td><td style="padding: 0.4rem;">1.0123</td><td style="padding: 0.4rem;">0.9877</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">mBERT</td><td style="padding: 0.4rem;">119,547</td><td style="padding: 0.4rem;">56.8M</td><td style="padding: 0.4rem;">129 MB</td><td style="padding: 0.4rem;">1.2575</td><td style="padding: 0.4rem;">1.3266</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><strong>byte-matched, 250 MB each</strong></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td></tr>
+            <tr style="border-bottom: 1px solid var(--border); background: var(--accent-soft);"><td style="padding: 0.4rem;"><strong>ours</strong></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;">250 MB</td><td style="padding: 0.4rem;"><strong>0.9190</strong></td><td style="padding: 0.4rem;"><strong>0.9155</strong></td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>indictok-256k</code></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;">250 MB</td><td style="padding: 0.4rem;">1.0123</td><td style="padding: 0.4rem;">0.9883</td></tr>
+            <tr><td style="padding: 0.4rem;">mBERT</td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;"></td><td style="padding: 0.4rem;">250 MB</td><td style="padding: 0.4rem;">1.2573</td><td style="padding: 0.4rem;">1.3268</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.6rem;">6 layers, 384 wide, 512 context, 20M training tokens, seeds 1234/1235/1236. Source: <code>docs/RESULTS.md:191-224</code>. The mBERT row is the informative one: matching bytes nearly doubled its text and its score did not move, so more coverage was not what it lacked.</p>
+      </div>
+
+      <h3>Tamil news headline classification</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">tokenizer</th>
+              <th style="padding: 0.4rem;">tokens/headline</th>
+              <th style="padding: 0.4rem;">accuracy</th>
+              <th style="padding: 0.4rem;">macro F1</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border); background: var(--accent-soft);"><td style="padding: 0.4rem;"><strong>ours</strong></td><td style="padding: 0.4rem;"><strong>10.12</strong></td><td style="padding: 0.4rem;"><strong>0.5583</strong> (0.4863-0.6143)</td><td style="padding: 0.4rem;"><strong>0.4883</strong> (0.4368-0.5173)</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;"><code>indictok-256k</code></td><td style="padding: 0.4rem;">12.14</td><td style="padding: 0.4rem;">0.3932 (0.3613-0.4326)</td><td style="padding: 0.4rem;">0.2383 (0.1854-0.2893)</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">mBERT</td><td style="padding: 0.4rem;">26.39</td><td style="padding: 0.4rem;">0.3936 (0.3525-0.4272)</td><td style="padding: 0.4rem;">0.2215 (0.1446-0.2783)</td></tr>
+            <tr><td style="padding: 0.4rem;">majority class</td><td style="padding: 0.4rem;">-</td><td style="padding: 0.4rem;">0.3354</td><td style="padding: 0.4rem;">0.0837</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.6rem;">MTEB TamilNewsClassification, 14,521 train headlines in six classes, official 2,048 test split. Paired bootstrap over 10,000 resamples: +16.50 points against indictok (95 percent CI +14.70 to +18.31), +16.47 against mBERT (+14.52 to +18.38). Every ours seed beats every competitor seed. Source: <code>docs/RESULTS.md:269-279</code>.</p>
+      </div>
+
+      <h3>Throughput, measured today on this machine</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Model</th>
+              <th style="padding: 0.4rem;">single thread</th>
+              <th style="padding: 0.4rem;">rayon batch</th>
+              <th style="padding: 0.4rem;">bytes/token</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">30K wiki</td><td style="padding: 0.4rem;">19.51 MB/s</td><td style="padding: 0.4rem;">46.80 MB/s (2.40x)</td><td style="padding: 0.4rem;">10.671</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">120K wiki, 104,781 merges</td><td style="padding: 0.4rem;">17.49 MB/s</td><td style="padding: 0.4rem;">43.65 MB/s (2.50x)</td><td style="padding: 0.4rem;">11.937</td></tr>
+            <tr><td style="padding: 0.4rem;"><strong>cost of 4x vocabulary</strong></td><td style="padding: 0.4rem;"><strong>10.4 percent</strong></td><td style="padding: 0.4rem;"><strong>6.7 percent</strong></td><td style="padding: 0.4rem;">+11.9 percent</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.6rem;">Measured with <code>cargo run --release --bin bench -- output/v2_wiki_30000.json data/tamil_wiki_clean.txt 16777216</code> and the same for <code>output/dom_wiki_120000.json</code>. Same corpus, same binary, same machine, best of three passes. The repo quotes 8 percent in <code>docs/RESULTS.md</code> and 11 percent in the README. Say "about 7 to 10 percent depending on single-threaded or batch" and you are right either way.</p>
+      </div>
+
+      <h3>Base vocabulary, and the model</h3>
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Base vocabulary</td><td style="padding: 0.4rem;"><strong>1,135</strong> = 256 byte + 12 vowels + 23 consonants + 276 consonant+vowel-sign + 4 special + 15 ligatures + 528 conjunct stems + 10 digits + 11 extra</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Published 30K model</td><td style="padding: 0.4rem;">31,793 vocab, 30,000 merges</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Published 120K model</td><td style="padding: 0.4rem;">122,723 exported vocab, 120,000 learned merges + 819 promotion merges = 120,819</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Trainer artifact vocab</td><td style="padding: 0.4rem;">122,467. The 256 byte tokens are added at export time, which is where the 122,723 comes from</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Promotion merges</td><td style="padding: 0.4rem;">819 for any model built on the current base vocab, at both 30K and 120K. The small 300-merge sample model gives 291 because its vocab predates the current byte table</td></tr>
+            <tr><td style="padding: 0.4rem;">Training time, 120K on the full mix</td><td style="padding: 0.4rem;">6.56 seconds, 1,039,013 unique words</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="corpus">
+      <h2>5. The training corpus in full</h2>
+      <p>Three domains, each with its own split rule, mixed at full volume with no ratios.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Corpus</th>
+              <th style="padding: 0.4rem;">Source</th>
+              <th style="padding: 0.4rem;">How it was obtained</th>
+              <th style="padding: 0.4rem;">Split rule</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Tamil Wikipedia</td>
+              <td style="padding: 0.4rem;">MediaWiki dump</td>
+              <td style="padding: 0.4rem;">14 ordered regexes strip templates, refs, file links, tables, headings, bold markers, entities, bare URLs. Then a gate: at least 30 characters, Tamil letters at least 40 percent, markup characters at most 2 percent</td>
+              <td style="padding: 0.4rem;"><strong>Tail</strong> 20,000 lines held out, rest is train. The corpus is in order</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">IndicCorpV2 Tamil</td>
+              <td style="padding: 0.4rem;">Hugging Face dataset, <code>ai4bharat/IndicCorpV2</code>, <code>data/ta.txt</code></td>
+              <td style="padding: 0.4rem;">HTTP Range request for a leading 400 MiB slice, because the full file is 11.8 GB. Resumable. A tokenizer saturates long before 400 MB</td>
+              <td style="padding: 0.4rem;"><strong>Head</strong> 50,000 sentences held out, rest is train. The file is unshuffled</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Tamil YouTube transcripts</td>
+              <td style="padding: 0.4rem;">1,400 Tamil videos</td>
+              <td style="padding: 0.4rem;">A pre-built JSONL from a sibling repo, which was itself built with <code>youtube-transcript-api</code> over 2,755 video IDs with a 10 second sleep between requests to avoid an IP ban. Downloaded at 164,653,141 bytes, then cleaned of speaker labels, caption annotations, URLs and HTML entities</td>
+              <td style="padding: 0.4rem;"><strong>By video</strong>, SHA-256 hash bucket on the video ID, 20 percent test share. 278 test videos, 1,122 train videos</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Sizes, exactly as they sit on disk</div>
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem; margin-top: 0.5rem;">
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Wikipedia raw</td><td style="padding: 0.4rem;">127,889 lines, 38,845,639 bytes</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Wikipedia cleaned</td><td style="padding: 0.4rem;">111,956 lines, 32,337,985 bytes. 87.5 percent kept</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">wiki train / test</td><td style="padding: 0.4rem;">91,956 lines, 26,555,218 bytes / 20,000 lines, 5,782,767 bytes</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">IndicCorp slice</td><td style="padding: 0.4rem;">419,430,400 bytes exactly, 1,023,342 lines, 511,309 documents, 1,411,815 sentences kept</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">indiccorp train / test</td><td style="padding: 0.4rem;">1,361,815 lines, 393,634,204 bytes / 50,000 lines, 14,546,236 bytes</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Transcripts raw</td><td style="padding: 0.4rem;">1,185,664 captions from 1,400 videos</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">Transcripts kept</td><td style="padding: 0.4rem;">896,641. 240,077 failed the Tamil gate</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">transcripts train / test</td><td style="padding: 0.4rem;">718,335 lines, 71,632,534 bytes / 178,306 lines, 17,788,896 bytes</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.4rem;">The published mix</td><td style="padding: 0.4rem;"><strong>1,535,820 lines, 307,158,642 bytes</strong>, plus a dummy prefix space per line = 308,694,462 bytes</td></tr>
+            <tr><td style="padding: 0.4rem;">Reproducibility</td><td style="padding: 0.4rem;">Rebuilding the mix and retraining gives byte-identical merges and vocab, and the exported <code>tokenizer.json</code> has the same SHA-256 as the live Hub file</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">The transcript corpus, in your own words</div>
+        <p>I did not scrape YouTube in this repo. <code>scripts/fetch_transcripts.py</code> downloads a pre-built JSONL that a sibling repo produced with <code>youtube-transcript-api</code>. I verified its provenance by reading the two scripts that produced it: one iterates 2,755 video IDs and groups captions by generated language, the other pulls the Tamil track and sleeps ten seconds between videos because the API bans the IP after a few hundred requests. From 1,185,664 raw captions, a Tamil gate that requires at least 30 characters, at least 40 percent Tamil letters and at most 2 percent markup characters keeps 896,641.</p>
+        <p>The split is by video, not by line, and that is the important part. Captions from one video are contiguous utterances of one speaker, so a line-level split would put near-duplicate sentences on both sides and make the held-out score meaningless. I hash the video ID and bucket it, which gives 278 test videos and 1,122 train videos, so no speaker appears in both halves.</p>
+        <p>What it bought: the transcripts column went up 11.9 percent, and on the Latin-heavy subset, where English sits inside Tamil words like <code>thatடiled</code>, the model went from losing to <code>indictok-256k</code> by 2 percent to leading it by 11 percent. That is the reason the corpus was worth fetching, and it is a case where adding training data beat adding vocabulary size.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Three corpus findings that changed a decision</div>
+        <ol style="margin: 0.5rem 0 0; padding-left: 1.3rem;">
+          <li><strong>Domain skew is real and asymmetric.</strong> At 120K the wiki-only model loses 9.1 percent against the mix on IndicCorp, while the IndicCorp-only model loses only 1.4 percent on wiki. Wiki is the better general-purpose Tamil corpus because it is homogeneous, so its frequent n-grams are core orthography that transfers.</li>
+          <li><strong>Volume is irrelevant. Diversity is what costs.</strong> Retraining wiki on the same 25 MB repeated 8 times produces a byte-identical model. The trainer keys on unique words, so upsampling changes nothing. Only added diversity changes the model.</li>
+          <li><strong>Mixing only pays above about 100K merges.</strong> At 30K the mix loses to wiki-only on wiki. At 120K it ties the best specialist on each domain, inside 0.6 percent. That is a tie, not a win, and the earlier revision of the table overstated it as a win on both.</li>
+        </ol>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">The held-out contamination you should know about</div>
+        <p>The transcripts split has a leak: 9,000 lines, 5.05 percent of the test half, appear in both halves. The cause is order-dependent deduplication, where a line seen first in the test split is never removed when the same text arrives later in a train video. The effect on the headline is small, moving the published model from 14.050 to 14.032 bytes per token, but it is real and the script's own comment claims to prevent it. If you are asked about data hygiene, this is the honest answer, and you can say the fix is to dedup against the full train set after the split rather than within it.</p>
+      </div>
+    </section>
+
+    <section id="qa">
+      <h2>6. Question bank with follow-ups</h2>
+
+      <div class="diagram-card">
+        <div class="step-title">Q1. Walk me through this project.</div>
+        <p><strong>Answer:</strong> See section 1. Lead with the tokenizer tax, then the base vocabulary, then parity, then the measurement.</p>
+        <p><strong>Follow-up 1: Why is the base vocabulary 1,135 tokens and not smaller?</strong> Because BPE training has a fixed merge budget, and every base token is a merge that cannot be spent learning corpus words. The measurement is in the rejection of the 6,348 extra clusters: the base reached about 7,000 and held-out compression went from 10.156 to 10.855.</p>
+        <p><strong>Follow-up 2: How do you know the base vocabulary is not just overfitting?</strong> It was measured on three domains including one, Grantha-heavy text, that the base was not built for, and it improved there too. And the whole point of the base is that it works with zero training, which is a separate claim from it being a good training seed.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q2. Why Rust instead of Python?</div>
+        <p><strong>Answer:</strong> Two reasons. Memory layout and throughput predictability. BPE training and encoding do millions of pair lookups and priority queue operations. In Python every string and tuple is a heap object with reference counting, and the garbage collector introduces pauses. In Rust I pack pair keys into native 64-bit integers so they sit in CPU registers with no allocation, I use rayon to scale corpus ingestion and batch encoding across all cores with no data races, and I replaced the standard hash map merge table with a CSR index that avoids cache misses.</p>
+        <p><strong>Follow-up 1: What is the actual speedup over a Python implementation?</strong> I do not have a like-for-like Python BPE trainer measured against this one, so I will not claim a ratio. What I can quote is this: the Rust trainer does 120,000 merges over a 293 MB corpus in 6.56 seconds, and the encoder sustains 47 MB/s batched.</p>
+        <p><strong>Follow-up 2: What did Rust cost you?</strong> The borrow checker, mostly. The compile-time error messages about lifetimes in the promotion merge recursion in <code>model.rs</code> were the slowest part of the project. The payoff is that the encoder has no locks and no allocator traffic in the hot loop, so the throughput numbers are reproducible.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q3. What makes Tamil tokenization hard?</div>
+        <p><strong>Answer:</strong> Tamil is agglutinative and written in an abugida. Consonants carry an inherent short 'a' unless a vowel sign changes it, and the pulli suppresses that vowel to join the next consonant. Tamil also glues suffixes onto words. So if a tokenizer starts strictly at the Unicode character level, every cluster has to be assembled by learned merges, and words fragment into sub-syllabic pieces that carry no meaning for the model.</p>
+        <p><strong>Follow-up 1: Give a concrete example.</strong> <code>க்ஷ</code> and <code>ஸ்ரீ</code> and <code>ண்ட</code>. Each is a consonant plus pulli plus consonant. Before I added the conjunct stems to the base vocab, each of those cost 3 to 4 tokens.</p>
+        <p><strong>Follow-up 2: How do you know this matters for model quality, not just token count?</strong> Two ways. First, morphological alignment: MorphScore over 1,195 Tamil word forms from the UD_Tamil-TTB treebank gives us 0.709 recall against 0.480 for mBERT, so our boundaries land on morpheme edges more often. Second, the downstream classification result, where we score 16.5 points above both competitors and they collapse to zero F1 on the two minority classes. The honest caveat is that the literature does not fully support morphological alignment as the causal explanation, and I will say that too.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q4. What was the hardest bug you hit?</div>
+        <p><strong>Answer:</strong> The merge heap eviction bug in the trainer. When a pair merges, the frequencies of adjacent pairs change, so the binary heap holds entries with stale counts. The original code popped a stale entry and discarded it. That is catastrophic specifically because a max-heap pops the highest count first, so the entries that go stale at the top are exactly the frequent pairs in the corpus. The trainer permanently ignored its top candidates and spent merges on second-best ones. I fixed it with lazy validation: when a popped entry's count does not match the frequency table, re-push it with the corrected count. The fix was worth 25 percent of the token count, taking the model from 10.156 to 13.468 bytes per token at 30K merges, with 44,642 corrections over 30,000 merges.</p>
+        <p><strong>Follow-up 1: Why did it take so long to notice?</strong> Because the bug made training <em>faster</em>. It skipped work. And the artifact it produced was a valid-looking model, just a worse one. The first sign was that a 30K merge run finished in 1.4 seconds on a 38 MB corpus, which was too fast.</p>
+        <p><strong>Follow-up 2: How do you stop it coming back?</strong> There is a brute-force greedy BPE oracle in the test suite that recomputes the merges independently and compares. And there was a CI job that re-introduced each of the two trainer defects and required the suite to fail, because a regression test that no longer catches its own bug is worse than no test. That CI job was later dropped in a docs cleanup, which is a gap I know about.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q5. How did you get Rust and Python to agree?</div>
+        <p><strong>Answer:</strong> The two engines disagreed on 20 percent of lines for six commits, and I would have defended the export if asked to. The cause was architectural rather than a bug: each side built its own model. The export added byte tokens and promotion merges the encoder never saw, and the encoder seeded a chunk with the greedy longest base cluster while Hugging Face BPE always seeds with single characters. Two models produce two tokenizations.</p>
+        <p>Three things I tried and rejected. Registering the base clusters as Hugging Face <code>added_tokens</code> measured 0 percent agreement, because HF extracts added tokens before the BPE model runs, so the model never fires and output collapses to characters. Keeping HF's <code>ByteLevel</code> pretokenizer measured 0 percent agreement too, because it byte-maps the text before BPE sees it, so none of our raw-text merges can ever match. Changing only the export got me from 0 to 71.8 percent on wiki and 73.0 percent on IndicCorp, and it stalled there.</p>
+        <p>What worked was admitting the encoder was the side that was wrong. Hugging Face BPE has no seed-symbol concept, so the encoder cannot keep greedy longest-match seeding if it wants to be equivalent. I deleted the Aho-Corasick base automaton, made the encoder seed one symbol per character, made it merge every occurrence of the best-ranked pair in one pass, and put both sides on one shared <code>canonical_model()</code> that builds the vocabulary, the byte tokens and the promotion merges. Promotion merges rebuild each base cluster from characters and rank ahead of the learned merges, 819 of them. Both engines now emit identical IDs on 100 percent of inputs, and the token count difference is 0.0 percent, not 1.7 percent.</p>
+        <p><strong>Follow-up 1: What is a promotion merge?</strong> A synthetic merge rule that rebuilds a base cluster out of single characters, so that HF's character-seeded BPE can reach it. For <code>ஸ்ரீ</code> the rules are <code>ர</code> plus <code>ீ</code> to make <code>ரீ</code>, then <code>ஸ</code> plus <code>ரீ</code> to make <code>ஸ்ரீ</code>. They rank ahead of the learned merges so the cluster exists before any learned merge that consumes it.</p>
+        <p><strong>Follow-up 2: Why not just tell people to use the Rust encoder?</strong> That was the fallback position for six commits and it is a bad answer for a published artifact. The fix is better. The publish script now refuses to upload unless ID agreement is at least 99 percent and decode fidelity is 100 percent.</p>
+        <p><strong>Follow-up 3: What was the subtle bug in the export?</strong> The decoder. It was a sequence of ByteFallback then ByteLevel. ByteFallback assembles <code>&lt;0xNN&gt;</code> into bytes and returns a UTF-8 string, and then ByteLevel re-applies the GPT-2 table to that output. A decoded <code>é</code>, which is itself a GPT-2 stand-in for byte 0xE9, got turned back into the raw byte and then decoded to U+FFFD. That is silent corruption rather than a token count problem, and it took a separate fix: ByteFallback alone, never ByteLevel after it.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q6. How do you know the compression advantage is real?</div>
+        <p><strong>Answer:</strong> Compression alone proves nothing about model quality, so I ran three things. Bits per byte instead of loss per token, because a tokenizer that packs more text into a token has fewer tokens to spread the loss over, so per-token loss is not comparable across vocabularies. Three seeds per tokenizer, 1234, 1235 and 1236, with the spread reported alongside the mean. And the byte-matched control, which is the one a critic would ask for: the same 250 MB of the same corpus for every tokenizer, because a fixed token budget hands the better compressor more text and cannot separate segmentation from coverage.</p>
+        <p>The control is where the argument is made. Under a fixed token budget we score 0.9193 bits per byte on wiki against 1.0123 for <code>indictok-256k</code> and 1.2575 for mBERT, and we saw 309 MB of text against 257 MB and 129 MB. Under the byte-matched control we score 0.9190, they score 1.0123 and 1.2573. Nothing moved. The informative row is mBERT: matching bytes nearly doubled its training text from 129 MB to 250 MB and its bits per byte did not move at all, 1.2575 to 1.2573. More coverage was not what it lacked.</p>
+        <p><strong>Follow-up 1: Is your comparison fair against <code>indictok-256k</code>?</strong> Partly. Its 256,000-token vocabulary makes its embedding table 109.1M parameters against our 58.0M, so some of what it loses is vocabulary size rather than tokenization. I would rather state that than hide it. The clean comparison is against mBERT, where the sizes are nearly identical: 119,547 tokens against 122,723, and 56.8M parameters against 58.0M. We win with half the parameters of indictok, which is the opposite of what the size difference predicts.</p>
+        <p><strong>Follow-up 2: What are the caveats?</strong> The byte-matched control is one seed per row, though its margins sit within 0.1 points of the three-seed range. A 58M-parameter model on 20M tokens is heavily undertrained, which is why the absolute bits-per-byte numbers are high. And the classification runs vary the fine-tune seed, not the pretraining seed.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q7. What trade-offs did you uncover?</div>
+        <p><strong>Answer:</strong> Two, and both are in the docs because they are measured costs rather than hidden ones.</p>
+        <p>The first is compression against morphological alignment. The dummy prefix, a space prepended to every training line, was worth 1.29 percent compression because it stops line-initial words from splitting differently from words in the middle of a line. It also drops MorphScore recall from 0.6352 to 0.5129, so minus 19 percent. That was the right call on the evidence available at the time, because compression was measurable and alignment was not. Now both are measured, so it is a price rather than a surprise.</p>
+        <p>The second is vocabulary size against merge budget. 120K merges buys 13 to 26 percent compression for about 7 to 10 percent throughput, but it also means 21.3 percent of the vocabulary is never used on any held-out split and the last 30K merges carry 2.3 percent of emitted tokens. That is not an argument for shrinking, since a 120K vocabulary partly exists to cover rare-but-correct input, but it does mean the advantage is concentrated in the first 60 to 90K merges. The smallest vocabulary that covers 99.9 percent of emitted tokens is 93,835.</p>
+        <p><strong>Follow-up 1: Would you ship differently now?</strong> The 120K model still beats every smaller variant on both compression and alignment, so I would ship it. If alignment mattered more than compression for a specific downstream use, I would ship the 30K wiki model instead, because its alignment is better and its throughput is better.</p>
+        <p><strong>Follow-up 2: What else did you price but not decide?</strong> Splitting digits into individual chunks. I measured it end to end: it costs 3.4 percent compression on wiki and 1.5 percent on IndicCorp. The benefit, that a model has to compose digits rather than memorise whole numbers, is a downstream claim and this repo has no arithmetic benchmark, so I priced the option rather than resolving it. Anyone with that harness should re-run it. It is a one-line pretokenizer change.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q8. How does the pretokenizer work?</div>
+        <p><strong>Answer:</strong> It is one regex with alternatives, each introduced by a pipe. Special tokens first, then words with apostrophes, then underscore words, then uppercase sequences, then lowercase or mixed, then Tamil and Indic letters, then numbers, then punctuation and symbols, then whitespace, then separators and controls, then stray combining marks. The alternatives are ordered so the more specific ones win.</p>
+        <p>The character classes use Unicode properties. <code>\p{L}</code> is any letter, <code>\p{M}</code> is any combining mark, and Tamil is a letter plus combining marks, which is why the Tamil pattern is <code>(?:[\p{Lt}\p{Lm}\p{Lo}]\p{M}*)+</code>.</p>
+        <p><strong>Follow-up 1: Why does pretokenization matter at all?</strong> Because it sets the walls that merges cannot cross. Without it, BPE will happily merge a space into a word and then a word into the next one, and the segmentation stops corresponding to anything in the language. It also caps chunk length, which is why the rescan-based merge loop is fast enough.</p>
+        <p><strong>Follow-up 2: What was the bug?</strong> A missing alternation. Two rules concatenated without a pipe became one rule instead of two alternatives, so the pretokenizer merged them into a single pattern that matched the wrong thing. It was one character.</p>
+        <p><strong>Follow-up 3: Why not use HF's ByteLevel pretokenizer?</strong> Because it hardcodes GPT-2's pattern and byte-maps text before BPE sees it, so none of our raw-text merges could ever match. That was worth 0 percent ID agreement when I tried it. The export uses a <code>Split</code> with our own regex instead.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q9. Why BPE and not Unigram?</div>
+        <p><strong>Answer:</strong> I measured it rather than assuming. I built a SentencePiece reference harness that trains Unigram and BPE at the same vocabulary size on the same corpus with the same seed set and the same normalization, because a comparison where the candidate sets differ measures the seed rather than the objective. Unigram beat BPE by 0.64 percent on wiki and 0.67 percent on IndicCorp. That is a tie.</p>
+        <p>I also tried writing a Unigram trainer, which was worse by a factor of 1.8 because I used hard Viterbi counts instead of SentencePiece's forward-backward marginals and pruned by raw frequency instead of the loss. 26.6 percent of its emitted tokens were single characters. It was deleted before it was ever committed.</p>
+        <p>The decision was: 0.6 percent does not pay for a second trainer and a second export path, especially when BPE's deterministic rank-based merges are what Hugging Face's standard inference path implements. I also want to be honest that the usual arguments for Unigram are morphological alignment and downstream model quality, and I did not test either of those in that harness.</p>
+        <p><strong>Follow-up 1: Where are those numbers?</strong> They were in <code>IMPROVEMENT_ROADMAP.md</code>, which I deleted in a docs cleanup at <code>b14d245</code>. They are recoverable with <code>git show b14d245^:IMPROVEMENT_ROADMAP.md</code>. That deletion was a mistake and I would not repeat it.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q10. How do you handle characters the model has never seen?</div>
+        <p><strong>Answer:</strong> Byte fallback, on both sides, and it is the reason the tokenizer is lossless. Every one of the 256 byte values has a token, spelled <code>&lt;0xNN&gt;</code> the way Hugging Face spells them, and any character not in the vocabulary is emitted as one token per UTF-8 byte. So encoding never drops anything and decoding is byte-exact, for any input including emoji, Han characters and malformed UTF-8.</p>
+        <p><strong>Follow-up 1: How does that interact with the GPT-2 byte table?</strong> The base vocabulary's byte tokens use GPT-2's byte-to-unicode table exactly, because Hugging Face's ByteLevel pretokenizer and decoder hardcode it. The export uses the <code>&lt;0xNN&gt;</code> spelling instead, with a ByteFallback decoder, and never ByteLevel after it, because that combination double-maps Latin-1 and produces replacement characters.</p>
+        <p><strong>Follow-up 2: Is there a case where it hurts?</strong> Yes, one that I found and did not fix: on text where Latin-1 characters are literal text, our engine emits their UTF-8 bytes while HF emits the stand-in itself. The token counts match but the IDs differ by design. The verification script triages these separately from real mismatches.</p>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q11. What would you do differently?</div>
+        <p><strong>Answer:</strong> Four things, in order of how much they bother me.</p>
+        <ol>
+          <li><strong>I deleted the decision log too early.</strong> <code>IMPROVEMENT_ROADMAP.md</code> held the BPE versus Unigram table, the digit-splitting measurement and the pre- and post-fix compression grid. When I split the README into <code>docs/</code> I deleted it, and several of those measurements now exist only in git history. A docs restructure should not delete measurement records.</li>
+          <li><strong>I left stale numbers in the code.</strong> The <code>export_hf.rs</code> header still says ID parity is 79.2 percent. It is 100 percent. The paragraph explains why the gap should close, and the gap closed in the commit that rewrote the encoder. A comment that says "this is broken because of the old design" outlives the old design unless someone checks it.</li>
+          <li><strong>I dropped a CI guard.</strong> The job that re-introduced each trainer defect and required the test suite to fail was removed in a docs cleanup, because it lived in the same file. That guard is why the heap bug and the ID-minting bug would not come back.</li>
+          <li><strong>The transcripts split has a 5 percent leak</strong> from order-dependent deduplication, 9,000 lines. The fix is to dedup against the full train set after the split, not within each half.</li>
+        </ol>
+      </div>
+
+      <div class="diagram-card">
+        <div class="step-title">Q12. Why should I trust these numbers?</div>
+        <p><strong>Answer:</strong> Because the harness re-derives rather than storing. <code>scripts/publish_hf.py</code> refuses to upload unless decode fidelity is 100 percent and ID agreement is at least 99 percent. The measurement scripts re-run the comparison rather than reading a stored value. The downstream numbers are means over three seeds with the range printed next to them, and the within-tokenizer spread is at most 0.0022 bits per byte against a smallest gap of 0.072, so the ranking is 33 times beyond the seed noise. The classification result has a paired bootstrap over 10,000 resamples and both confidence intervals exclude zero.</p>
+        <p>And I can reproduce the published artifact. Rebuilding the mix from the three train splits and retraining gives byte-identical merges and vocabulary, and the exported <code>tokenizer.json</code> has the same SHA-256 as the file on the Hub.</p>
+      </div>
+    </section>
+
+    <section id="traps">
+      <h2>7. Traps: numbers that will bite you</h2>
+      <p>These are still written in the repo and are wrong. If you quote them, you will be corrected.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.87rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">What the repo says</th>
+              <th style="padding: 0.4rem;">Where</th>
+              <th style="padding: 0.4rem;">The truth</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">"ID parity with our encoder is 79.2%"</td>
+              <td style="padding: 0.4rem;"><code>export_hf.rs:20</code></td>
+              <td style="padding: 0.4rem;"><strong>100 percent.</strong> Measured on wiki, IndicCorp and the wiki clean split, 500 lines each. The whole paragraph is stale: the encoder now seeds per character and merges every occurrence per pass, exactly as the comment says it should</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">"The publish script gates on decode fidelity, not ID agreement"</td>
+              <td style="padding: 0.4rem;"><code>docs/USAGE.md:264</code></td>
+              <td style="padding: 0.4rem;">False since <code>b8c1ee0</code>. The floor is <code>ID_AGREEMENT_FLOOR = 99.0</code>, and it is not 100</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">"Token count differs by about 1.7% against the Rust encoder"</td>
+              <td style="padding: 0.4rem;"><code>docs/USAGE.md:253</code>, <code>scripts/publish_hf.py:269</code></td>
+              <td style="padding: 0.4rem;"><strong>0.0 percent.</strong> 10,105 tokens both sides on 500 wiki lines</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Base vocab "1,793 (this)"</td>
+              <td style="padding: 0.4rem;"><code>vocab.rs:162</code></td>
+              <td style="padding: 0.4rem;"><strong>1,135.</strong> The commit's own test asserts it</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">CSR merge table is commit <code>60a4855</code></td>
+              <td style="padding: 0.4rem;"><code>docs/RESULTS.md:26</code></td>
+              <td style="padding: 0.4rem;"><strong><code>89b1bbb</code>.</strong> <code>60a4855</code> is on <code>backup/pre-rewrite-737d2fb</code> and is not an ancestor of <code>main</code>. Same tree, different lineage, because the repo was rewritten</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Unigram rejected because of "inference overhead and non-deterministic Viterbi decoding"</td>
+              <td style="padding: 0.4rem;"><code>learning/03_git_commit_chronology_and_decision_log.md:118-121</code></td>
+              <td style="padding: 0.4rem;">The recorded reason was cost: 0.6 percent does not pay for a second trainer and a second export path. Correct the record if you quote it</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">"8.31 bytes/token at 30K"</td>
+              <td style="padding: 0.4rem;"><code>docs/RESULTS.md:61</code></td>
+              <td style="padding: 0.4rem;">Explicitly flagged stale in the same file. Predates the heap fix and the corpus cleaning</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Throughput cost of 120K is 8 percent</td>
+              <td style="padding: 0.4rem;"><code>docs/RESULTS.md:25,171</code></td>
+              <td style="padding: 0.4rem;">README says 11 percent, the deleted roadmap said 12 percent. Measured today: <strong>10.4 percent single-thread, 6.7 percent batched</strong>. Say "about 7 to 10 percent depending on single-threaded or batch"</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Last 30K merges carry 2.4 percent of emitted tokens</td>
+              <td style="padding: 0.4rem;"><code>docs/RESULTS.md:175</code></td>
+              <td style="padding: 0.4rem;"><strong>2.3 percent</strong> for the published model. The 2.4 percent is the older model's number</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">MorphScore row for "this repo (120K)"</td>
+              <td style="padding: 0.4rem;"><code>docs/RESULTS.md:342</code></td>
+              <td style="padding: 0.4rem;">That is the pre-transcripts model. The MorphScore of the published model was never measured</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;">Vocab is 122,723</td>
+              <td style="padding: 0.4rem;">Everywhere</td>
+              <td style="padding: 0.4rem;">122,723 is the <strong>exported</strong> vocab, which includes the 256 byte tokens. The trainer artifact is 122,467. Say which one you mean</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>data/mixed/train.txt</code> is the published training corpus</td>
+              <td style="padding: 0.4rem;">On disk</td>
+              <td style="padding: 0.4rem;"><strong>Stale.</strong> It is wiki plus IndicCorp with no transcripts, dated before the transcripts existed. The real mix was rebuilt on the GPU host. Re-run <code>--mix</code> locally</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;">Base vocab comparison table in <code>vocab.rs</code></td>
+              <td style="padding: 0.4rem;"><code>vocab.rs:159-163</code></td>
+              <td style="padding: 0.4rem;">Every number in it is pre-heap-fix and 31 to 43 percent low. Use it to explain the shape of the decision, not the values</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="demo">
+      <h2>8. The five-minute live demo</h2>
+      <p>Have these ready. Each one shows something concrete and takes under a minute.</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">The base vocabulary, with no training at all</div>
+            <pre><code>cargo run --release --bin vocabcount</code></pre>
+            <p>Prints 1,135 tokens broken into the nine buckets, and asserts the buckets sum to the real size. That assertion exists because the breakdown had drifted: it summed to 1,136 against an actual 1,135, and that is where a stale "607 tokens" figure in the README came from.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Training from scratch, in seconds</div>
+            <pre><code>cargo run --release --bin train -- ./data/tamil_corpus.txt 50000 ./output/demo.json</code></pre>
+            <p>Watch the merge log. Every 100th iteration prints the pair and its frequency. The trainer is deterministic, so running it twice gives the same file.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Encoding Tamil, and the byte fallback in action</div>
+            <pre><code>cargo run --release --bin encode -- ./output/demo.json "வணக்கம்! க்ஷ ஸ்ரீ 🎉"</code></pre>
+            <p>Point at three things: the conjunct <code>க்ஷ</code> is one token, the emoji is four byte tokens, and the decode round-trips exactly.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">The export, and the parity check</div>
+            <pre><code>cargo run --release --bin export_hf -- ./output/demo.json ./output/demo_hf
+cargo build --release --bin encode_lines
+.venv/Scripts/python.exe scripts/verify_hf_export.py ./output/demo.json ./output/demo_hf data/tamil_wiki_clean.txt 200</code></pre>
+            <p>Expect "ids match 100.0%" and "decode ok 100.0%". This is the strongest thing you can show, because it is two independent engines producing identical output.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Throughput, single thread against rayon</div>
+            <pre><code>cargo run --release --bin bench -- ./output/demo.json data/tamil_wiki_clean.txt 16777216</code></pre>
+            <p>Then run the same against <code>output/v2_wiki_30000.json</code> and <code>output/dom_wiki_120000.json</code> to show the vocabulary scaling cost yourself, rather than quoting it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="unknown">
+      <h2>9. What you genuinely cannot answer</h2>
+      <p>Knowing what you do not have is worth as much as knowing what you do. Each of these is a real limit, and saying so out loud is a strength, not a gap.</p>
+
+      <div class="diagram-card">
+        <ul style="margin-bottom: 0;">
+          <li><strong>Does the segmentation cause the downstream gain, or is it the data?</strong> Unanswered. The byte-matched control rules out coverage as the explanation, but MUTANT-Indic (2026) found that 2.4x better Tamil fertility produced an essentially identical downstream score. My data is consistent with segmentation mattering and does not prove it.</li>
+          <li><strong>Does morphological alignment explain the performance gap?</strong> No, and the literature is fairly clear. Arnett and Bergen (COLING 2025) find some evidence that tokenization quality explains the agglutinative-versus-fusional gap and none for morphological alignment, attributing it to dataset size instead. Arnett, Hudspeth and O'Connor (ICML 2025) reach the same conclusion across 70 languages and 7 tasks. Alignment describes the boundaries, it is not evidence they are the reason a model performs better.</li>
+          <li><strong>Does splitting digits help arithmetic?</strong> Unpriced on the benefit side. The compression cost is measured at 1.5 to 3.4 percent, the arithmetic benefit is not, because the harness does not measure arithmetic. It is a one-line change and a retrain for anyone who cares.</li>
+          <li><strong>How much does pretraining seed variance matter?</strong> Only the fine-tune seeds were varied in the classification runs. The token-budget bits-per-byte table has three pretraining seeds. The classification table varies fine-tuning, not pretraining, and the fine-tune spread is large, up to 0.13 accuracy, which is why the ranges and the paired bootstrap are there.</li>
+          <li><strong>Is the 79.2 percent figure wrong?</strong> No, it was right once, for six commits. It is wrong now. The honest version of the story is that I fixed the encoder, not the export, and the stale comment is still in the file.</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0012-canonical-model-and-hf-export.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 12: The canonical model and the Hugging Face export</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Next</span>
+        <span class="label">The learning path</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Step 13 of 13. Built by walking all 130 commits and reproducing the load-bearing measurements. Source files: <a href="../docs/RESULTS.md">docs/RESULTS.md</a>, <a href="../docs/USAGE.md">docs/USAGE.md</a>, <a href="../docs/DEVELOPMENT.md">docs/DEVELOPMENT.md</a>.</p>
+    </footer>
+  </div>
+</body>
+</html>

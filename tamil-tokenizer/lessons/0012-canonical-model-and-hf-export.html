@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 12: The Canonical Model and the Hugging Face Export</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+
+
+    <header>
+      <div class="lesson-badge">Lesson 0012</div>
+      <h1>The canonical model and the Hugging Face export</h1>
+      <p class="lead">Two engines, six commits of disagreement, one shared model, and the export that writes five files.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 12 of 13.</strong> <span class="dim">Shipping. How two engines became one tokenizer.</span>
+    </div>
+
+    <section>
+      <h2>1. The problem: two models, two tokenizations</h2>
+      <p>You have a Rust encoder and a Python export. Both read the same trained JSON file. For six commits they disagreed on the token IDs for about a fifth of all lines.</p>
+      <p>The cause was not a bug. It was architecture. Each side built its own model from the same file:</p>
+
+      <div class="diagram-card">
+        <pre><code>THE RUST ENCODER                        THE HF EXPORT
+-------------------------                -------------------------
+seed a chunk with the                    add 256 byte tokens
+longest base cluster                     add promotion merges
+(1,135 clusters)                         append missing characters
+merge ONE occurrence                     merge EVERY occurrence
+per pass                                per pass
+
+RESULT: the same text, different token IDs.</code></pre>
+      </div>
+
+      <p>Three attempts to fix it in the export alone, and what each one measured:</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.92rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Attempt</th>
+              <th style="padding: 0.5rem;">Measured ID agreement</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Keep HF's <code>ByteLevel</code> pretokenizer</td>
+              <td style="padding: 0.5rem;"><strong>0%</strong>. It byte-maps the text before BPE sees it, so no raw-text merge in the file can ever match</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Register the base clusters as <code>added_tokens</code></td>
+              <td style="padding: 0.5rem;"><strong>0%</strong>. HF extracts added tokens before the BPE model runs, so the model never fires and output collapses to characters</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Make the export reproduce the pretokenizer and the base clusters</td>
+              <td style="padding: 0.5rem;"><strong>71.8%</strong> on wiki, 73.0% on IndicCorp. It stalled there</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">Fix the encoder, share one model between both sides</td>
+              <td style="padding: 0.5rem;"><strong>100%</strong>, and the token count difference went to 0.0%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>HF's BPE model has no seed-symbol concept. It always starts from single characters. So the encoder could not keep its greedy longest-match seeding and still be equivalent to the export. The encoder was the side that was wrong.</p>
+
+      <div class="callout">
+        <div class="callout-title">What the fix actually was</div>
+        <p>Delete the Aho-Corasick base automaton from the encoder. Seed one symbol per character, the way HF does. Merge every occurrence of the best-ranked pair in one pass, the way HF does. Then put both sides on one <code>canonical_model()</code> that builds the vocabulary, the byte tokens and the promotion merges, so there is only one model and one merge list in the repo.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. The canonical model</h2>
+      <p><code>model.rs</code> is 166 lines and does four things. Everything else in the export reads its output.</p>
+
+      <div class="diagram-card">
+        <pre><code>canonical_model(vocab, merges) -&gt; CanonicalModel
+
+1. append the characters a token uses but the vocab lacks   (added_prims)
+2. append the 256 byte tokens, spelled &lt;0x00&gt; .. &lt;0xFF&gt;
+3. build the promotion merges                                (promotions)
+4. return vocab + promotions ++ learned merges</code></pre>
+      </div>
+
+      <h3>Step 1: the characters the vocab is missing</h3>
+      <p>A token like <code>க்ஷ</code> uses three characters. If the vocabulary does not hold one of them as its own token, then that character cannot be looked up, so the input cannot be represented. The model finds every such character and appends it as a new token with the next free ID.</p>
+
+      <div class="diagram-card">
+        <pre><code>let mut missing: Vec&lt;char&gt; = vocab
+    .keys()
+    .flat_map(|t| t.chars())
+    .filter(|c| !vocab.contains_key(&amp;c.to_string()) &amp;&amp; !byte_chars.contains(c))
+    .collect();
+missing.sort_unstable();
+missing.dedup();
+let added_prims = missing.len();</code></pre>
+        <p>Sorting matters. The IDs are assigned in sorted order, so the same trained file always produces the same canonical model.</p>
+      </div>
+
+      <h3>Step 2: the byte tokens</h3>
+      <div class="diagram-card">
+        <pre><code>for b in 0..=255u8 {
+    vocab.insert(format!("&lt;0x{b:02X}&gt;"), next_id);
+    next_id += 1;
+}</code></pre>
+        <p>The spelling is Hugging Face's, because that is what its <code>ByteFallback</code> decoder looks for. Any character not in the vocabulary is emitted as one token per UTF-8 byte, which keeps encoding lossless for any input at all.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. The promotion merge algorithm</h2>
+      <p>This is the hardest piece of logic in the repo, so walk it slowly.</p>
+      <p>A promotion merge rebuilds a multi-character base cluster out of single characters. Without it, a token like <code>க்ஷ</code> is unreachable in HF, because HF can only reach a token through a merge.</p>
+
+      <h3>Which tokens need one</h3>
+      <div class="diagram-card">
+        <pre><code>let produced: HashSet&lt;String&gt; = merges.iter()
+    .map(|(a, b)| format!("{a}{b}")).collect();
+
+let mut reachable: HashSet&lt;String&gt; = byte_chars.iter()
+    .map(|c| c.to_string())
+    .chain(vocab.keys().filter(|t| t.chars().count() == 1).cloned())
+    .collect();
+
+let mut candidates: Vec&lt;&amp;String&gt; = vocab.keys()
+    .filter(|t| t.chars().count() &gt; 1
+             &amp;&amp; !produced.contains(*t)
+             &amp;&amp; !reachable.contains(*t))
+    .collect();</code></pre>
+        <ul>
+          <li><strong>produced</strong>: tokens a learned merge already creates. No promotion needed.</li>
+          <li><strong>reachable</strong>: single-character tokens plus the byte table characters. These need zero merges.</li>
+          <li><strong>candidates</strong>: everything else, multi-character and unreachable.</li>
+        </ul>
+      </div>
+
+      <h3>Order matters: longest token first</h3>
+      <div class="diagram-card">
+        <pre><code>candidates.sort_by_key(|t| (std::cmp::Reverse(t.chars().count()), (*t).clone()));</code></pre>
+        <p>A promotion's rank decides which merge happens when several are available, and the encoder resolves overlaps by longest match. Emitting the four-character token before the three-character ones is what makes the reconstruction build the longer token instead of stopping at the shorter one.</p>
+        <p>The second key, the token text itself, makes the sort total. A <code>HashMap</code> iterates in a random order, so without it the same file would produce different promotions on different runs.</p>
+      </div>
+
+      <h3>The recursive split</h3>
+      <div class="diagram-card">
+        <pre><code>fn split(token: &amp;str, vocab, reachable) -&gt; Option&lt;Vec&lt;(String, String)&gt;&gt; {
+    if reachable.contains(token) {
+        return Some(Vec::new());
+    }
+    let chars: Vec&lt;char&gt; = token.chars().collect();
+    for k in (1..chars.len()).rev() {
+        let left: String = chars[..k].iter().collect();
+        let right: String = chars[k..].iter().collect();
+        if !vocab.contains_key(&amp;left) || !vocab.contains_key(&amp;right) {
+            continue;
+        }
+        let (Some(a), Some(b)) = (
+            split(&amp;left, vocab, reachable),
+            split(&amp;right, vocab, reachable),
+        ) else {
+            continue;
+        };
+        let mut out = a;
+        out.extend(b);
+        out.push((left, right));
+        return Some(out);
+    }
+    None
+}</code></pre>
+      </div>
+
+      <p>Read it as: find a split point where both halves are themselves vocabulary tokens, split each half the same way, and emit the inner rules first.</p>
+
+      <p>Two rejected approaches are documented in the code comments, and they are the two mistakes you would make yourself:</p>
+
+      <div class="diagram-card">
+        <pre><code>// A flat greedy pass would take the whole token as one part and emit nothing.
+// A plain prefix pass cannot build ஸ்ரீ, since ஸ்ர is not a token while ஸ்ர and ரீ both are.</code></pre>
+      </div>
+
+      <p>Work <code>ஸ்ரீ</code> through the real algorithm, three characters: <code>ஸ</code>, <code>்</code>, <code>ரீ</code>.</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Try the longest prefix first</div>
+            <p><code>k = 2</code>: left is <code>ஸ்ர</code>, which is not a token. Skip.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Try the shortest prefix</div>
+            <p><code>k = 1</code>: left is <code>ஸ</code>, a Grantha consonant, so it is a token. Right is <code>்ரீ</code>, a consonant plus vowel sign, so it is a token too. Both sides are in the vocabulary.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Recurse into the right side</div>
+            <p><code>்ரீ</code> is not reachable on its own, so split it again. <code>k = 1</code>: left <code>்ர</code> is a single consonant, reachable. Right <code>ீ</code> is the vowel sign, which was appended in step 1 of the canonical model, so it is reachable too. The rule is <code>ர</code> + <code>ீ</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Emit inner rules first</div>
+            <p>The rules come back as <code>(ர, ரீ)</code> then <code>(ஸ, ரீ)</code>. The inner rule has to run first, otherwise <code>ரீ</code> does not exist yet when the outer rule needs it. That ordering is why the function returns a list and not a single pair.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">How many promotion merges</div>
+        <p><strong>819</strong> for any model built on the current 1,135-token base vocab, at both 30K and 120K merges. You can check it yourself: <code>cargo run --release --bin export_hf -- output/v5_mixed_120000_prefixed.json out</code> prints <code>120819 merges (819 promotions)</code>. The small sample model in the repo prints 291, because its vocabulary predates the current byte table and has far fewer multi-character clusters to rebuild.</p>
+      </div>
+
+      <h3>Where the promotions sit</h3>
+      <div class="diagram-card">
+        <pre><code>let promotions = build_promotions(&amp;vocab, merges, &amp;byte_chars);
+let mut all_merges = promotions.clone();
+all_merges.extend(merges.iter().cloned());
+
+CanonicalModel {
+    vocab,
+    merges: all_merges,
+    promotions: promotions.len(),
+    added_prims,
+}</code></pre>
+        <p>Promotions come first in the list, so their ranks are lower than any learned merge. A base cluster therefore exists before any learned merge that consumes it. The encoder keeps the two lists in separate tables anyway, because there are only a few hundred promotions and they run against single characters, so the whole table fits in cache while the learned merges do not.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. The export</h2>
+      <p><code>export_hf.rs</code> writes five files. The Rust side of the export is now a thin wrapper over <code>canonical_model()</code>.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.92rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">File</th>
+              <th style="padding: 0.5rem;">Who reads it</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>tokenizer.json</code></td>
+              <td style="padding: 0.5rem;">The Hugging Face <code>tokenizers</code> library. The main artifact.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>tokenizer_config.json</code></td>
+              <td style="padding: 0.5rem;"><code>transformers</code>. Holds <code>model_max_length</code> and the special token names.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>special_tokens_map.json</code></td>
+              <td style="padding: 0.5rem;"><code>transformers</code>. Written alongside the config so the two cannot drift.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>vocab.json</code></td>
+              <td style="padding: 0.5rem;">The slow tokenizer. A flat token to ID map.</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>merges.txt</code></td>
+              <td style="padding: 0.5rem;">The slow tokenizer. Rank order, one pair per line.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The pre-tokenizer</h3>
+      <div class="diagram-card">
+        <pre><code>"pre_tokenizer": {
+    "type": "Sequence",
+    "pretokenizers": [
+        {
+            "type": "Split",
+            "pattern": { "Regex": pattern },
+            "behavior": "Isolated",
+            "invert": false,
+        },
+    ],
+},</code></pre>
+        <p>The pattern is our own Tamil-aware regex, pulled straight from the pretokenizer so the two engines cannot disagree about it.</p>
+      </div>
+
+      <h3>The decoder, and the trap inside it</h3>
+      <div class="diagram-card">
+        <pre><code>let decoders = vec![json!({ "type": "ByteFallback" })];</code></pre>
+        <p>ByteFallback alone. Never ByteLevel after it.</p>
+        <p>The earlier version was a sequence of <code>ByteFallback</code> then <code>ByteLevel</code>, and it silently corrupted Latin-1 text. ByteFallback assembles <code>&lt;0xNN&gt;</code> into bytes and returns a UTF-8 string. ByteLevel then re-applies the GPT-2 table to that output, so a decoded <code>é</code>, which is itself a GPT-2 stand-in for byte 0xE9, got turned back into the raw byte and then decoded to U+FFFD.</p>
+        <p>Measured: across 3,988 Latin-1-bearing lines in four corpora, 2,074 decoded corrupted before the fix and none did after. Decode fidelity on the sample corpus went from 95.7% to 100%.</p>
+      </div>
+
+      <h3>Two config traps</h3>
+      <div class="diagram-card">
+        <ul>
+          <li><code>model_max_length</code> goes in <code>tokenizer_config.json</code>, never in <code>tokenizer.json</code>. HF's <code>tokenizer.json</code> schema rejects the field, and writing it there makes the file unloadable. The default is now <code>u64::MAX</code>, because a published tokenizer should not silently truncate a caller's input.</li>
+          <li><code>eos_token</code> is the empty string, because the empty string is a real token in this vocabulary. An empty string in the config resolves to no token, so <code>tok.eos_token</code> used to come back <code>None</code> even though the token was there.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. The gates</h2>
+      <p>A tokenizer that corrupts text, or will not load, is worse than no tokenizer. <code>scripts/publish_hf.py</code> refuses to upload on any of these:</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.93rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Gate</th>
+              <th style="padding: 0.5rem;">Threshold</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Decode fidelity on every held-out split</td>
+              <td style="padding: 0.5rem;">100.0%</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">ID agreement against the Rust encoder</td>
+              <td style="padding: 0.5rem;">99.0% floor. Not 100, because anything below that is a bug in one of the two engines</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">Install check</td>
+              <td style="padding: 0.5rem;"><code>AutoTokenizer</code> loads from the repo root and from a subfolder, bos, eos, pad and unk all resolve, Tamil and Latin-1 round-trip</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">Prove it yourself</div>
+        <pre><code>cargo run --release --bin export_hf -- output/v5_mixed_120000_prefixed.json output/_check
+cargo build --release --bin encode_lines
+.venv/Scripts/python.exe scripts/verify_hf_export.py \
+  output/v5_mixed_120000_prefixed.json output/_check data/tamil_wiki_clean.txt 500</code></pre>
+        <p>Expect <code>ids match 500 (100.0%)</code> and <code>decode ok 500 (100.0%)</code>. Two independent engines, one vocabulary, one merge list, identical output.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>6. What to say if it comes up in an interview</h2>
+      <div class="diagram-card">
+        <p>The short version: the two engines disagreed on a fifth of lines and the cause was that each built its own model. I tried to fix the export three times and got to 79 percent. The fix was to admit the encoder was the side that was wrong, because HF's BPE has no seed symbols and always starts from characters. I deleted the encoder's base automaton, made both sides seed per character and merge every occurrence per pass, and put both on one shared canonical model. The remaining piece was the promotion merges, which rebuild each base cluster out of characters so that a character-seeded BPE can reach it at all. Now both engines agree on 100 percent of inputs, and the publish script refuses to upload an artifact that disagrees.</p>
+      </div>
+    </section>
+
+
+    <div class="pagenav">
+      <a href="../lessons/0011-rust-systems-language-mental-model.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 11: Rust as a systems language</span>
+      </a>
+      <a href="../interview/dossier.html">
+        <span class="dir">Next</span>
+        <span class="label">The interview dossier</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 12 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+</body>
+</html>

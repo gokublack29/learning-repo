@@ -1,0 +1,632 @@
+/* ==========================================================================
+   Tamil Tokenizer learning docs
+   Palette below is WCAG AA verified. Text pairs are all at or above 4.5:1,
+   borders at or above 3:1 against the surface they sit on. Run
+   scripts/check_contrast.py to re-verify after any change.
+   ========================================================================== */
+
+:root {
+  --bg: #f1f3f6;
+  --surface: #ffffff;
+  --text: #13171c;
+  --text-muted: #48515e;
+  --border: #7d8694;
+  --border-strong: #5b6472;
+  --accent: #0a5cc4;
+  --accent-soft: #e3eefc;
+  --accent-text: #04457f;
+  --success: #0d6b2c;
+  --success-soft: #d6f5de;
+  --warn: #7a5100;
+  --warn-soft: #fdf1c4;
+  --code-bg: #e4e9ef;
+  --radius: 8px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.09), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #080b10;
+    --surface: #12171f;
+    --text: #eef3fa;
+    --text-muted: #a6b3c4;
+    --border: #6d7887;
+    --border-strong: #99a5b5;
+    --accent: #74bdff;
+    --accent-soft: #0f2039;
+    --accent-text: #93cbff;
+    --success: #57d972;
+    --success-soft: #0f2919;
+    --warn: #e5b750;
+    --warn-soft: #2b2412;
+    --code-bg: #1c2430;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.35);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  padding: 0 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  line-height: 1.65;
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+}
+
+.container {
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   Links. There was no anchor rule before, so links fell back to the browser
+   default, which in dark mode was near-invisible blue on a near-black page.
+   -------------------------------------------------------------------------- */
+
+a {
+  color: var(--accent-text);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+a:hover {
+  color: var(--accent);
+  text-decoration-thickness: 2px;
+}
+
+a:focus-visible,
+button:focus-visible,
+:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+/* --------------------------------------------------------------------------
+   Top navigation, present on every page
+   -------------------------------------------------------------------------- */
+
+.topnav {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  margin: 0 -1.25rem 1.5rem;
+  padding: 0.6rem 1.25rem;
+}
+
+.topnav-inner {
+  max-width: 780px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.1rem;
+  align-items: baseline;
+  font-size: 0.9rem;
+}
+
+.topnav-brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.topnav-brand:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+.topnav a {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.topnav a:hover {
+  color: var(--accent-text);
+  text-decoration: underline;
+}
+
+.topnav .here {
+  color: var(--accent-text);
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Path bar: where this page sits in the reading order
+   -------------------------------------------------------------------------- */
+
+.pathbar {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 0.6rem 0.9rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.pathbar strong {
+  color: var(--accent-text);
+}
+
+.pathbar .dim {
+  color: var(--text-muted);
+}
+
+/* --------------------------------------------------------------------------
+   Header
+   -------------------------------------------------------------------------- */
+
+header {
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.lesson-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.25rem 0.6rem;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+}
+
+h1 {
+  font-size: 2.1rem;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  letter-spacing: -0.015em;
+}
+
+.lead {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.45rem;
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.35rem;
+  color: var(--text);
+}
+
+h3 {
+  font-size: 1.12rem;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+p, ul, ol {
+  margin: 0 0 1.25rem;
+}
+
+li {
+  margin-bottom: 0.4rem;
+}
+
+strong {
+  color: var(--text);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  background: var(--code-bg);
+  color: var(--text);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  margin: 0 0 1.5rem;
+}
+
+pre code {
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  border: none;
+  font-weight: 400;
+}
+
+/* --------------------------------------------------------------------------
+   Cards and callouts
+   -------------------------------------------------------------------------- */
+
+.diagram-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin: 1.5rem 0;
+  box-shadow: var(--shadow);
+  color: var(--text);
+}
+
+.diagram-card > :last-child {
+  margin-bottom: 0;
+}
+
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.flow-step:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.step-num {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+.step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-title {
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  color: var(--text);
+}
+
+.callout {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  margin: 1.5rem 0;
+  color: var(--text);
+}
+
+.callout > :last-child {
+  margin-bottom: 0;
+}
+
+.callout-title {
+  font-weight: 700;
+  margin-bottom: 0.35rem;
+  color: var(--accent-text);
+}
+
+/* --------------------------------------------------------------------------
+   Quiz
+   -------------------------------------------------------------------------- */
+
+.quiz-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin: 2rem 0;
+  box-shadow: var(--shadow);
+}
+
+.quiz-question {
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.quiz-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text);
+  transition: all 0.15s ease;
+}
+
+.quiz-option:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.quiz-option:disabled {
+  cursor: default;
+  opacity: 0.92;
+}
+
+.quiz-option.correct {
+  background: var(--success-soft);
+  border-color: var(--success);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.quiz-option.wrong {
+  background: var(--warn-soft);
+  border-color: var(--warn);
+  color: var(--text);
+}
+
+.feedback {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  display: none;
+  color: var(--text);
+}
+
+/* --------------------------------------------------------------------------
+   Previous / Next navigation
+   -------------------------------------------------------------------------- */
+
+.pagenav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2.5rem;
+}
+
+.pagenav a {
+  flex: 1 1 240px;
+  display: block;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+.pagenav a:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.pagenav .dir {
+  display: block;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.pagenav .label {
+  display: block;
+  color: var(--accent-text);
+  font-weight: 700;
+  margin-top: 0.2rem;
+}
+
+.pagenav .empty {
+  flex: 1 1 240px;
+  padding: 0.85rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+footer {
+  margin-top: 3.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+footer a {
+  color: var(--accent-text);
+}
+
+/* --------------------------------------------------------------------------
+   Home page
+   -------------------------------------------------------------------------- */
+
+.hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 5px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.hero h1 {
+  margin-bottom: 0.4rem;
+}
+
+.path {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 0;
+}
+
+.path > li {
+  counter-increment: step;
+  position: relative;
+  padding: 1rem 1rem 1rem 3.5rem;
+  margin-bottom: 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.path > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 1rem;
+  top: 1rem;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.path h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+}
+
+.path p {
+  margin: 0 0 0.5rem;
+  font-size: 0.93rem;
+  color: var(--text-muted);
+}
+
+.path .meta {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+
+.path .phase {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  margin-right: 0.5rem;
+}
+
+.start {
+  display: inline-block;
+  margin-top: 0.4rem;
+  padding: 0.7rem 1.3rem;
+  background: var(--accent);
+  color: #ffffff;
+  border-radius: var(--radius);
+  font-weight: 700;
+  text-decoration: none;
+  border: 1px solid var(--accent);
+}
+
+.start:hover {
+  background: var(--accent-text);
+  border-color: var(--accent-text);
+  color: #ffffff;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.col h3 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.col p {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.col ul {
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+table {
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+}
+
+@media (max-width: 560px) {
+  body {
+    font-size: 16px;
+  }
+  h1 {
+    font-size: 1.7rem;
+  }
+  .pathbar {
+    font-size: 0.85rem;
+  }
+}

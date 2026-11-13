@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 11: Rust as a Systems Language, Through This Tokenizer</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0011</div>
+      <h1>Rust as a Systems Language</h1>
+      <p class="lead">The mental model behind every line of this repo: ownership, borrowing, memory layout, traits, and why the code packs bits into integers.</p>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 0.75rem;">
+        Assumes you can read Python or JavaScript and you have seen Rust syntax before (Lesson 10).
+        If not, read <a href="0010-rust-syntax-to-read-this-codebase.html">Lesson 10</a> first, it takes 15 minutes.
+      </p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 11 of 13.</strong> <span class="dim">The language. Ownership, borrowing, memory layout, traits.</span>
+    </div>
+
+    <div class="diagram-card">
+      <div class="step-title">Contents</div>
+      <ol style="margin: 0.5rem 0 0; padding-left: 1.4rem; font-size: 0.92rem; line-height: 1.9;">
+        <li><a href="#s1">What makes Rust a systems language</a></li>
+        <li><a href="#s2">Stack and heap</a></li>
+        <li><a href="#s3">Ownership: one value, one owner</a></li>
+        <li><a href="#s4">Move, Copy, Clone</a></li>
+        <li><a href="#s5">Borrowing: the one rule</a></li>
+        <li><a href="#s6">Lifetimes: the tie between input and output</a></li>
+        <li><a href="#s7">How the data structures actually sit in memory</a></li>
+        <li><a href="#s8">Bit packing: the first real systems trick</a></li>
+        <li><a href="#s9">CSR layout: trading a hash lookup for a slice</a></li>
+        <li><a href="#s10">Traits: Rust's polymorphism</a></li>
+        <li><a href="#s11">Generics and monomorphization</a></li>
+        <li><a href="#s12">Errors are values</a></li>
+        <li><a href="#s13">Iterators and closures</a></li>
+        <li><a href="#s14">Threads, Arc, and Send/Sync</a></li>
+        <li><a href="#s15">Zero-cost abstractions and the build flags</a></li>
+        <li><a href="#s16">A checklist for reading any Rust file</a></li>
+        <li><a href="#s17">Worked example: annotate <code>encode_inner</code></a></li>
+        <li><a href="#s18">Systems vocabulary</a></li>
+        <li><a href="#s19">Check your understanding</a></li>
+      </ol>
+    </div>
+
+    <section id="s1">
+      <h2>1. What makes Rust a systems language</h2>
+      <p>You have written Python or JavaScript. Both languages hide the machine behind a runtime that owns your memory, checks your types at runtime, and throws exceptions when things go wrong. Rust removes all three layers. The trade is that the compiler now insists on knowing who owns what.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.93rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Concern</th>
+              <th style="padding: 0.5rem;">Python / JavaScript</th>
+              <th style="padding: 0.5rem;">Rust (this repo)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Memory freeing</td>
+              <td style="padding: 0.5rem;">Garbage collector, pauses at unpredictable times</td>
+              <td style="padding: 0.5rem;">Deterministic, at the end of the owner's scope</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Type errors</td>
+              <td style="padding: 0.5rem;">Found while the program is running</td>
+              <td style="padding: 0.5rem;">Found while the program is compiling</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Failure handling</td>
+              <td style="padding: 0.5rem;">Exceptions, thrown from anywhere, caught anywhere</td>
+              <td style="padding: 0.5rem;">A value in the return type, the compiler forces a branch</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;">Deployment</td>
+              <td style="padding: 0.5rem;">Needs the runtime installed</td>
+              <td style="padding: 0.5rem;">One static binary, no runtime</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">Speed</td>
+              <td style="padding: 0.5rem;">Interpreted, object overhead per value</td>
+              <td style="padding: 0.5rem;">C-like, but with the memory bugs prevented</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>What Rust gives up: no inheritance, no null, no exceptions, no free-form pointers without a fight with the compiler. What it gives back: a tokenizer that processes 122,000 merges at 17 MB/s without a garbage collector ever running, which is exactly the goal of <code>encoder.rs</code>.</p>
+    </section>
+
+    <section id="s2">
+      <h2>2. Stack and heap</h2>
+      <p>Every value lives in one of two places, and the difference decides how fast your code runs.</p>
+
+      <div class="diagram-card">
+        <pre><code>STACK                              HEAP
++---------------------------+        +----------------------------+
+| text:  &amp;str              |  ptr -&gt; | "வணக்கம்" as UTF-8 bytes   |
+| len:   15                 | -------+ | 15 bytes, owned by String  |
++---------------------------+        +----------------------------+
+| id:    974                |          (allocated, then freed)
++---------------------------+
+</code></pre>
+      </div>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.93rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Lives on the stack</th>
+              <th style="padding: 0.5rem;">Lives on the heap</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td style="padding: 0.5rem; vertical-align: top;">
+                <code>u32</code>, <code>u64</code>, <code>usize</code>, <code>bool</code>, <code>char</code>,
+                <code>Option&lt;T&gt;</code>, <code>Result&lt;T, E&gt;</code>, tuples and arrays of those,
+                a struct of those (for example <code>Symbol</code>)
+              </td>
+              <td style="padding: 0.5rem; vertical-align: top;">
+                <code>String</code>, <code>Vec&lt;T&gt;</code>, <code>HashMap</code>, <code>Box&lt;T&gt;</code>,
+                <code>Arc&lt;T&gt;</code>, anything behind a reference whose size is not known at compile time
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The stack is a fixed region the function pointer moves through. Push and pop are a pointer bump, measured in nanoseconds. The heap is a large arena the program asks the allocator for chunks of. Every heap allocation costs a call to the allocator, and freeing costs another.</p>
+
+      <p>This is why <code>Vec&lt;u32&gt;</code> is fast and <code>Vec&lt;Vec&lt;u32&gt;&gt;</code> is slower even when both hold the same numbers. The outer <code>Vec</code> is one allocation holding 32-bit integers back to back. The inner one is a pointer per element, and every read is a cache miss chasing that pointer.</p>
+
+      <div class="callout">
+        <div class="callout-title">Where this shows up in the repo</div>
+        <p><code>encoder.rs</code> keeps <code>id_to_token: Arc&lt;Vec&lt;String&gt;&gt;</code>. The <code>Vec</code> is one contiguous heap block, so decoding token 9000 is one array index, not a hash lookup. The <code>Arc</code> around it is a reference counter so the map can be shared with other structures without copying 122,000 strings.</p>
+      </div>
+    </section>
+
+    <section id="s3">
+      <h2>3. Ownership: one value, one owner</h2>
+      <p>Every value in Rust has exactly one owner. When the owner goes out of scope, the value is dropped and its memory is freed. There is no <code>free()</code> to call and no garbage collector to wait for.</p>
+
+      <div class="diagram-card">
+        <pre><code>fn main() {
+    let name = String::from("வணக்கம்");   // owner: `name`
+    {
+        let borrowed = &amp;name;             // a read-only view, owner is still `name`
+        println!("{}", borrowed);
+    }                                     // `borrowed` view ends, `name` still owns the bytes
+    println!("{}", name);                // still valid
+}                                         // `name` drops here, bytes are freed
+</code></pre>
+      </div>
+
+      <p>The compiler tracks this. If you pass a <code>String</code> into a function and the function stores it somewhere that outlives the caller's scope, the compiler rejects the program. That is the whole idea of Rust in one sentence: memory errors become compile errors.</p>
+
+      <p>Here is the rule in practice, from <a href="../trainer.rs"><code>trainer.rs</code></a>:</p>
+
+      <div class="diagram-card">
+        <pre><code>let merged = format!("{}{}", token1, token2);   // `merged` owns a fresh String
+
+self.token_to_id.insert(merged.clone(), new_id);  // the map takes ownership, so it needs a copy
+self.id_to_token.push(merged.clone());            // the Vec takes ownership, so it needs another copy
+self.merges.push((token1.clone(), token2.clone()));</code></pre>
+      </div>
+
+      <p>Those <code>.clone()</code> calls are not optional. <code>insert</code> and <code>push</code> both take the value by ownership, and <code>merged</code> is used again in the log line further down. The clone copies the bytes onto the heap, so you pay for it. Rust never hides a copy: every copy is written down.</p>
+
+      <div class="callout">
+        <div class="callout-title">The habit to build</div>
+        <p>When you read Rust, look for <code>.clone()</code>, <code>.to_string()</code>, and <code>.to_owned()</code>. Each one is a heap copy the programmer asked for on purpose. In a performance-focused file like <code>encoder.rs</code>, a <code>.clone()</code> inside a loop is a bug waiting to happen.</p>
+      </div>
+    </section>
+
+    <section id="s4">
+      <h2>4. Move, Copy, Clone</h2>
+      <p>When ownership transfers, the original variable becomes unusable. This is called a move.</p>
+
+      <div class="diagram-card">
+        <pre><code>let a = String::from("தமிழ்");
+let b = a;          // ownership moved into `b`
+// println!("{}", a);  // compile error: `a` was moved
+</code></pre>
+      </div>
+
+      <p>The bytes are not copied. Only the pointer, length, and capacity move, and the old binding is marked dead. The compiler then refuses to let you use <code>a</code>, which is what stops a double free.</p>
+
+      <p>Small, plain-data types opt out with <code>Copy</code>. Copying them is a bitwise copy and the original stays usable.</p>
+
+      <div class="diagram-card">
+        <pre><code>#[derive(Clone, Copy, Debug)]
+struct Symbol {
+    start: usize,
+    end: usize,
+    id: Option&lt;u32&gt;,
+}</code></pre>
+        <p>This is from <a href="../encoder.rs"><code>encoder.rs</code></a>. <code>Symbol</code> is 24 bytes of plain numbers, so copying it is free and the compiler allows it. Look at how it is used:</p>
+        <pre><code>for sym in &amp;symbols {          // &amp; means iterate by reference, no copy
+    if let Some(id) = sym.id {  // Option&lt;u32&gt; is Copy, so `id` is a plain copy
+        token_ids.push(id);
+    }
+}</code></pre>
+      </div>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.93rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Trait</th>
+              <th style="padding: 0.5rem;">Meaning</th>
+              <th style="padding: 0.5rem;">Cost</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Copy</code></td>
+              <td style="padding: 0.5rem;">Bitwise copy on assignment, original stays valid</td>
+              <td style="padding: 0.5rem;">Free, the value is small and has no destructor</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Clone</code></td>
+              <td style="padding: 0.5rem;">Explicit deep copy you call yourself</td>
+              <td style="padding: 0.5rem;">Real work, a heap allocation for a String</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;">neither</td>
+              <td style="padding: 0.5rem;">Ownership moves, original is dead</td>
+              <td style="padding: 0.5rem;">Free, a pointer copy</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s5">
+      <h2>5. Borrowing: the one rule</h2>
+      <p>Moving is expensive when you do not need it, so Rust lets you borrow instead.</p>
+
+      <ul>
+        <li><code>&amp;T</code> is a shared borrow. Many readers allowed at once, nobody may change the value.</li>
+        <li><code>&amp;mut T</code> is an exclusive borrow. One writer, and no readers while it is alive.</li>
+      </ul>
+
+      <p>In one line: at any moment you may have many shared borrows or one mutable borrow, never both.</p>
+
+      <p>On a method, <code>&amp;self</code> means "this method reads the struct", and <code>&amp;mut self</code> means "this method changes the struct".</p>
+
+      <div class="diagram-card">
+        <pre><code>impl FastBPEEncoder {
+    // Reads the encoder. Many threads can call this at the same time.
+    pub fn encode(&amp;self, text: &amp;str) -&gt; Vec&lt;u32&gt; { ... }
+
+    // Changes the encoder. Nobody else may touch it during the call.
+    fn merge_pass(&amp;self, symbols: &amp;mut Vec&lt;Symbol&gt;, ...) { ... }
+}</code></pre>
+      </div>
+
+      <p>Here is the payoff for a tokenizer. <code>encode_batch</code> hands the same encoder to every core at once:</p>
+
+      <div class="diagram-card">
+        <pre><code>pub fn encode_batch&lt;T: AsRef&lt;str&gt; + Sync&gt;(&amp;self, texts: &amp;[T]) -&gt; Vec&lt;Vec&lt;u32&gt;&gt; {
+    use rayon::prelude::*;
+    texts.par_iter().map(|t| self.encode(t.as_ref())).collect()
+}</code></pre>
+        <p>The compiler checks this for you. <code>self</code> is borrowed immutably by every thread, so the encoder's fields must not be mutated while encoding runs. That is why the merge tables and the vocab are immutable after <code>FastBPEEncoder::build</code> returns.</p>
+      </div>
+
+      <p>When the borrow checker complains, it is usually pointing at a real design problem: two pieces of code want the same data at the same time. The fixes are always one of three: copy the data, split the borrow so the two pieces touch different fields, or restructure so the phases do not overlap.</p>
+    </section>
+
+    <section id="s6">
+      <h2>6. Lifetimes: the tie between input and output</h2>
+      <p>A lifetime annotation says how long a borrowed value must stay alive. It does not change how long anything lives, it just states the rule so the compiler can check it.</p>
+
+      <div class="diagram-card">
+        <pre><code>// pretokenizer.rs
+pub fn pretokenize&lt;'a&gt;(&amp;self, text: &amp;'a str) -&gt; Vec&lt;&amp;'a str&gt; {
+    self.pattern.find_iter(text).map(|m| m.as_str()).collect()
+}</code></pre>
+        <p>Read it out loud: "the slices I return point into <code>text</code>, so <code>text</code> must outlive every slice I hand back."</p>
+      </div>
+
+      <p>The <code>'a</code> appears three times and all three must be the same lifetime. It is written explicitly here because the output borrows from the argument rather than from <code>self</code>, and the compiler cannot guess which one you meant.</p>
+
+      <p>In practice you write lifetimes rarely. The compiler infers them when there is one obvious answer:</p>
+
+      <div class="diagram-card">
+        <pre><code>pub fn merges(&amp;self) -&gt; &amp;[(String, String)] { &amp;self.merges }
+// The output borrows from self, so it cannot outlive the trainer.
+</code></pre>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">The 90 percent rule</div>
+        <p>You will see <code>&amp;'a str</code> in this repo maybe a dozen times. Everywhere else, the lifetimes are invisible. Do not go looking for them. If you ever need to name one, it will be because the compiler told you to.</p>
+      </div>
+    </section>
+
+    <section id="s7">
+      <h2>7. How the data structures actually sit in memory</h2>
+      <p>Each container in this repo is a deliberate choice about memory layout.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Type</th>
+              <th style="padding: 0.5rem;">Layout</th>
+              <th style="padding: 0.5rem;">Used here for</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Vec&lt;T&gt;</code></td>
+              <td style="padding: 0.5rem;">One heap block: pointer, length, capacity. Elements back to back.</td>
+              <td style="padding: 0.5rem;"><code>id_to_token</code>, <code>offsets</code>, <code>data</code>, token IDs</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>String</code></td>
+              <td style="padding: 0.5rem;">A <code>Vec&lt;u8&gt;</code> that is guaranteed valid UTF-8.</td>
+              <td style="padding: 0.5rem;">Every token's text, the corpus lines</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>HashMap</code></td>
+              <td style="padding: 0.5rem;">Buckets of key and value pairs, hashed at runtime. Order is not preserved.</td>
+              <td style="padding: 0.5rem;"><code>token_to_id</code>, <code>pair_freq</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>FxHashMap</code></td>
+              <td style="padding: 0.5rem;">Same shape, but the hash is a cheap integer mix. Not resistant to hostile input.</td>
+              <td style="padding: 0.5rem;">The encoder's vocab and special tokens</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>AHashMap</code></td>
+              <td style="padding: 0.5rem;">Hash map with a per-process random seed.</td>
+              <td style="padding: 0.5rem;">The trainer's pair counters</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>BinaryHeap</code></td>
+              <td style="padding: 0.5rem;">An array arranged so the largest element sits at index 0.</td>
+              <td style="padding: 0.5rem;">The trainer's priority queue of pairs</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>Arc&lt;T&gt;</code></td>
+              <td style="padding: 0.5rem;">A pointer plus an atomic reference count.</td>
+              <td style="padding: 0.5rem;">Sharing the vocab across threads</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Two details worth internalizing. First, a <code>HashMap</code> gives no order guarantee, which is why <a href="../vocab.rs"><code>vocab.rs</code></a> sorts by ID before writing JSON, and why <a href="../lib.rs"><code>lib.rs</code></a> rejects a vocab whose IDs have gaps. Second, <code>Vec::remove</code> shifts every later element left, so it costs O(n). <code>encoder.rs</code> calls it inside the merge loop, which is the hot path and the reason the chunk cache matters.</p>
+    </section>
+
+    <section id="s8">
+      <h2>8. Bit packing: the first real systems trick</h2>
+      <p>Look at how the trainer keys its pair counters:</p>
+
+      <div class="diagram-card">
+        <pre><code>type TokId = u32;
+
+#[inline]
+fn pack_pair(a: TokId, b: TokId) -&gt; u64 {
+    ((a as u64) &lt;&lt; 32) | (b as u64)
+}
+
+#[inline]
+fn unpack_pair(p: u64) -&gt; (TokId, TokId) {
+    ((p &gt;&gt; 32) as TokId, (p &amp; 0xFFFF_FFFF) as TokId)
+}</code></pre>
+      </div>
+
+      <div class="diagram-card">
+        <pre><code>bit 63        32 31         0
+    +-------------+-------------+
+    |  token a    |  token b    |
+    |  (u32)      |  (u32)      |
+    +-------------+-------------+
+</code></pre>
+      </div>
+
+      <p>Why bother, when a <code>(u32, u32)</code> tuple would work? Two reasons, both about the machine.</p>
+
+      <ol>
+        <li>Memory. A tuple of two <code>u32</code> is 8 bytes but it is not a single scalar value, so a hash map key of that type usually points at heap-allocated key storage. A <code>u64</code> is one scalar, hashed with a couple of multiply and shift instructions.</li>
+        <li>Speed. Hashing an integer is one multiply. Hashing a tuple means hashing two integers and combining them, every single lookup. The trainer does millions of lookups per merge.</li>
+      </ol>
+
+      <p>The encoder pushes this further and packs three values into one word:</p>
+
+      <div class="diagram-card">
+        <pre><code>#[inline]
+fn pack(b: u32, rank: u32, new_id: u32) -&gt; u64 {
+    (b as u64) | ((rank as u64) &lt;&lt; 21) | ((new_id as u64) &lt;&lt; 42)
+}
+
+#[inline]
+fn unpack_b(entry: u64) -&gt; u32 { (entry &amp; 0x1F_FFFF) as u32 }
+#[inline]
+fn unpack_rank(entry: u64) -&gt; u32 { ((entry &gt;&gt; 21) &amp; 0x1F_FFFF) as u32 }
+#[inline]
+fn unpack_new_id(entry: u64) -&gt; u32 { ((entry &gt;&gt; 42) &amp; 0x1F_FFFF) as u32 }</code></pre>
+        <pre><code>bit 63     42 41      21 20       0
+    +----------+----------+----------+
+    | new_id   |  rank    |    b     |
+    | 21 bits  | 21 bits  | 21 bits  |
+    +----------+----------+----------+
+</code></pre>
+        <p>21 bits holds up to 2,097,151. That is enough for a token ID, a merge rank, and a replacement ID at a 120K merge budget, so all three fit in one 64-bit word with one bit to spare. One cache line fetch now returns the whole rule.</p>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">Read the numbers, not the comment</div>
+        <p>The comment above the merge table says "17 bits each". The mask <code>0x1F_FFFF</code> is 21 bits, and the shifts are 21 apart, so the fields are 21 bits each. The code is right and the comment is wrong. This is the normal state of code: trust the arithmetic.</p>
+      </div>
+
+      <p>You will meet this idiom constantly in systems Rust. <code>#[inline]</code> tells the compiler the function is small and hot, so it inlines the body instead of making a call. <code>as u64</code> is a numeric cast, checked at compile time here because the types are fixed width.</p>
+    </section>
+
+    <section id="s9">
+      <h2>9. CSR layout: trading a hash lookup for a slice</h2>
+      <p>The obvious way to store merge rules is a hash map from <code>(a, b)</code> to a rule. This repo deliberately does not do that. The <code>MergeTable</code> in <a href="../encoder.rs"><code>encoder.rs</code></a> stores them in compressed sparse row form.</p>
+
+      <div class="diagram-card">
+        <pre><code>offsets:  [ 0 ][ 1 ][ 2 ][ 3 ] ... [ vocab_size ]
+            |      |      |      |             |
+            |      |      |      |             +-- end of row for token 3
+            |      |      |      +---------------- start of row for token 3
+            |      |      +----------------------- start of row for token 2
+            |      +------------------------------ start of row for token 1
+            +------------------------------------- start of row for token 0
+
+data:     [ rules for token 0 ][ rules for token 1 ][ rules for token 2 ] ...
+
+lookup(a=2, b=7):
+    slice = data[offsets[2] .. offsets[3]]     // usually 0 to 3 entries
+    scan the slice for b == 7
+</code></pre>
+      </div>
+
+      <p>The trick is that each token is the result of at most one merge, so the pairs starting with a given token are few. Sort all pairs by their first token, and the rules for token <code>a</code> end up contiguous. A lookup becomes one sequential read of a short slice plus a couple of comparisons.</p>
+
+      <p>There is a second guard. Most adjacent pairs in a chunk have no rule at all, and the <code>starts</code> field is a bitset with one bit per token ID:</p>
+
+      <div class="diagram-card">
+        <pre><code>starts: Vec&lt;u64&gt;   // one bit per token ID, set if that ID starts a merge
+
+fn starts_with(&amp;self, a: u32) -&gt; bool {
+    self.starts[(a / 64) as usize] &amp; (1u64 &lt;&lt; (a % 64)) != 0
+}</code></pre>
+        <p>That single bit test answers "is there any rule starting here" without touching the two large arrays. It is the reason the hot loop stays fast even though the table is bigger than the CPU cache.</p>
+      </div>
+
+      <p>The comment in the source records the measurement: a hash map at 120K merges cost 2.4 times the throughput, 17.4 down to 7.3 MB/s, because the table stops fitting in cache and every probe misses. The CSR layout cost 17 percent. Same data, different memory layout, different speed. That is the kind of decision a systems language exists to make possible.</p>
+    </section>
+
+    <section id="s10">
+      <h2>10. Traits: Rust's polymorphism</h2>
+      <p>Rust has no classes and no inheritance. A trait is a promise about what a type can do, and any type can implement any trait. Polymorphism happens through traits instead of through a base class.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Trait</th>
+              <th style="padding: 0.5rem;">The promise</th>
+              <th style="padding: 0.5rem;">In this repo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Copy</code>, <code>Clone</code></td>
+              <td style="padding: 0.5rem;">Can be copied, either free or deep</td>
+              <td style="padding: 0.5rem;"><code>Symbol</code>, <code>HeapEntry</code>, <code>WordData</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Debug</code></td>
+              <td style="padding: 0.5rem;">Can be printed with <code>println!("{:?}", x)</code></td>
+              <td style="padding: 0.5rem;">Nearly every struct</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Default</code></td>
+              <td style="padding: 0.5rem;">Has a sensible empty value</td>
+              <td style="padding: 0.5rem;"><code>TamilPretokenizer</code>, special token config</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Display</code></td>
+              <td style="padding: 0.5rem;">Has a human readable form, <code>{}</code></td>
+              <td style="padding: 0.5rem;"><code>TokenizerError</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Error</code></td>
+              <td style="padding: 0.5rem;">Is an error type that can be reported</td>
+              <td style="padding: 0.5rem;"><code>TokenizerError</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>From</code>, <code>Into</code></td>
+              <td style="padding: 0.5rem;">Can be converted from another type</td>
+              <td style="padding: 0.5rem;">Error conversions for the <code>?</code> operator</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Ord</code>, <code>PartialOrd</code>, <code>Eq</code></td>
+              <td style="padding: 0.5rem;">Has a total order, so it can go in a sorted container</td>
+              <td style="padding: 0.5rem;"><code>HeapEntry</code> in the priority queue</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Serialize</code>, <code>Deserialize</code></td>
+              <td style="padding: 0.5rem;">Can be written to and read from JSON</td>
+              <td style="padding: 0.5rem;"><code>TokenizerData</code>, written by <code>serde_json</code></td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>Send</code>, <code>Sync</code></td>
+              <td style="padding: 0.5rem;">Safe to move to other threads, or share across them</td>
+              <td style="padding: 0.5rem;">Required by rayon for <code>par_iter</code></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The hand-written ordering</h3>
+      <p>Most traits are derived, which means the compiler writes the implementation:</p>
+
+      <div class="diagram-card">
+        <pre><code>#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct HeapEntry {
+    key: u64,
+    count: u32,
+}</code></pre>
+        <p>The derived <code>PartialEq</code> compares both fields. The ordering cannot be derived, because the tie-break is a deliberate choice, so it is written by hand:</p>
+        <pre><code>impl Ord for HeapEntry {
+    fn cmp(&amp;self, other: &amp;Self) -&gt; Ordering {
+        match self.count.cmp(&amp;other.count) {
+            Ordering::Equal =&gt; other.key.cmp(&amp;self.key), // Reversed like HuggingFace
+            other =&gt; other,
+        }
+    }
+}</code></pre>
+      </div>
+
+      <p>Work out what that does. <code>BinaryHeap</code> is a max-heap, so the element it considers greatest pops first. The trainer wants the most frequent pair first, so a higher count must compare as greater. That is the first line. On a tie, the trainer wants the smaller packed key to win, so <code>other.key.cmp(&amp;self.key)</code> is reversed: a smaller key compares as greater, so it pops first.</p>
+
+      <p>This hand-written comparison is why training is deterministic. Two runs on the same corpus produce the same model, byte for byte. The comment in <a href="../trainer.rs"><code>trainer.rs</code></a> about sorting before assigning IDs exists for the same reason.</p>
+
+      <h3>Trait defaults</h3>
+      <div class="diagram-card">
+        <pre><code>impl Default for TamilPretokenizer {
+    fn default() -&gt; Self {
+        Self::new()
+    }
+}</code></pre>
+        <p>This lets any type that implements <code>Default</code> be created with <code>TamilPretokenizer::default()</code>, which is what generic code expects. It is the standard Rust way to say "a sensible empty value exists".</p>
+      </div>
+    </section>
+
+    <section id="s11">
+      <h2>11. Generics and monomorphization</h2>
+      <p>Generic types and functions are written with angle brackets:</p>
+
+      <div class="diagram-card">
+        <pre><code>Vec&lt;u32&gt;          // a vector of u32
+HashMap&lt;String, u32&gt;  // string to id
+Option&lt;T&gt;            // maybe a T
+Result&lt;T, E&gt;          // either a T or an E
+pub type TrainedTokenizer = (FxHashMap&lt;String, u32&gt;, Vec&lt;(String, String)&gt;);</code></pre>
+      </div>
+
+      <p>Unlike a class-based language, Rust does not erase generics at runtime. It generates a separate copy of the code for each concrete type used. <code>Vec&lt;u32&gt;</code> and <code>Vec&lt;String&gt;</code> compile to two different machine code functions with no type check inside. This is called monomorphization, and it is why generics in Rust are fast.</p>
+
+      <p>Generic functions can require capabilities of the type parameter:</p>
+
+      <div class="diagram-card">
+        <pre><code>pub fn encode_batch&lt;T: AsRef&lt;str&gt; + Sync&gt;(&amp;self, texts: &amp;[T]) -&gt; Vec&lt;Vec&lt;u32&gt;&gt; {
+    use rayon::prelude::*;
+    texts.par_iter().map(|t| self.encode(t.as_ref())).collect()
+}</code></pre>
+        <ul>
+          <li><code>T: AsRef&lt;str&gt;</code> means the type can be viewed as text. The same function accepts <code>&amp;str</code>, <code>String</code>, or <code>&amp;String</code> without any conversion code.</li>
+          <li><code>T: Sync</code> means the type is safe to share across threads. Rayon requires it, so the compiler asks for it here.</li>
+          <li><code>texts: &amp;[T]</code> is a borrowed slice, so no copy of the input collection is made.</li>
+        </ul>
+      </div>
+
+      <p>Note that the bound is written on the function, not on the struct. <code>FastBPEEncoder</code> is not generic at all. Generic <em>functions</em> over concrete types is the common Rust pattern.</p>
+    </section>
+
+    <section id="s12">
+      <h2>12. Errors are values</h2>
+      <p>There are no exceptions in Rust. A function that can fail returns a <code>Result</code>, and the compiler forces the caller to deal with it.</p>
+
+      <div class="diagram-card">
+        <pre><code>pub enum TokenizerError {
+    Io(std::io::Error),
+    Json(serde_json::Error),
+    InvalidData(String),
+}
+
+pub type Result&lt;T&gt; = std::result::Result&lt;T, TokenizerError&gt;;</code></pre>
+      </div>
+
+      <p>An enum is a tagged union. The value is one variant, plus enough space for the largest variant's payload. <code>TokenizerError</code> holds an I/O error, a JSON error, or a message. That is why it can be matched exhaustively:</p>
+
+      <div class="diagram-card">
+        <pre><code>impl std::fmt::Display for TokenizerError {
+    fn fmt(&amp;self, f: &amp;mut std::fmt::Formatter&lt;'_&gt;) -&gt; std::fmt::Result {
+        match self {
+            Self::Io(e) =&gt; write!(f, "I/O error: {}", e),
+            Self::Json(e) =&gt; write!(f, "JSON error: {}", e),
+            Self::InvalidData(msg) =&gt; write!(f, "Invalid data: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for TokenizerError {}
+
+impl From&lt;std::io::Error&gt; for TokenizerError {
+    fn from(e: std::io::Error) -&gt; Self { Self::Io(e) }
+}
+
+impl From&lt;serde_json::Error&gt; for TokenizerError {
+    fn from(e: serde_json::Error) -&gt; Self { Self::Json(e) }
+}</code></pre>
+      </div>
+
+      <p>The <code>From</code> implementations are what make the <code>?</code> operator work across different error types. The whole chain, from <a href="../lib.rs"><code>lib.rs</code></a>:</p>
+
+      <div class="diagram-card">
+        <pre><code>fn parse_id(path: &amp;str, token: &amp;str, value: &amp;serde_json::Value) -&gt; TokenizerResult&lt;u32&gt; {
+    let id = value.as_u64().ok_or_else(|| {
+        TokenizerError::InvalidData(format!("{}: id for {:?} is not an integer", path, token))
+    })?;
+    u32::try_from(id).map_err(|_| {
+        TokenizerError::InvalidData(format!("{}: id for {:?} is out of range", path, token))
+    })
+}</code></pre>
+        <p>Line by line:</p>
+        <ul>
+          <li><code>as_u64()</code> returns <code>Option&lt;u64&gt;</code>. <code>ok_or_else</code> turns the <code>None</code> into an error, and the <code>?</code> unwraps the <code>Ok</code> or returns early with the error.</li>
+          <li><code>u32::try_from(id)</code> returns <code>Result&lt;u32, TryFromIntError&gt;</code>. The <code>?</code> here converts that error into <code>TokenizerError</code> using the <code>From</code> impl above. Without that impl the <code>?</code> would not compile.</li>
+          <li><code>map_err</code> replaces the error with a better message but keeps the same error type.</li>
+          <li>The function returns <code>Result&lt;u32, TokenizerError&gt;</code>, so the caller must handle the failure.</li>
+        </ul>
+      </div>
+
+      <p>And this is what the caller does in <a href="../encode.rs"><code>encode.rs</code></a>:</p>
+
+      <div class="diagram-card">
+        <pre><code>let (vocab, merges) = match load_tokenizer(vocab_file) {
+    Ok(v) =&gt; v,
+    Err(e) =&gt; {
+        eprintln!("Failed to load vocab: {}", e);
+        std::process::exit(1);
+    }
+};</code></pre>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">Why this matters more than exceptions</div>
+        <p>With exceptions, a function that can fail does not say so in its signature, and a caller can forget to handle it. With <code>Result</code>, the failure path is part of the type, and the compiler lists every call site that has not dealt with it. In a 1,135 token vocab loaded from a file, that is the difference between a crash at 3am and a message at startup.</p>
+      </div>
+    </section>
+
+    <section id="s13">
+      <h2>13. Iterators and closures</h2>
+      <p>An iterator is a value that describes a sequence of values, possibly lazily. Chaining them reads like a pipeline.</p>
+
+      <div class="diagram-card">
+        <pre><code>self.pattern.find_iter(text).map(|m| m.as_str()).collect()
+         |                  |                    |
+         |                  |                    +-- gather into a Vec&lt;&amp;str&gt;
+         |                  +----------------------- transform each match into its text
+         +------------------------------------------ every match of the pattern</code></pre>
+      </div>
+
+      <p>The <code>|m| m.as_str()</code> part is a closure: an anonymous function that captures what it needs from the enclosing scope. Here it captures nothing, so it compiles to a plain function pointer with no overhead.</p>
+
+      <p>The common adapters you will see:</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.92rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Adapter</th>
+              <th style="padding: 0.5rem;">What it does</th>
+              <th style="padding: 0.5rem;">Here</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>.iter()</code></td>
+              <td style="padding: 0.5rem;">Iterate over borrowed items</td>
+              <td style="padding: 0.5rem;"><code>for sym in &amp;symbols</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>.map(f)</code></td>
+              <td style="padding: 0.5rem;">Transform each item</td>
+              <td style="padding: 0.5rem;"><code>.map(|t| self.encode(t.as_ref()))</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>.filter(p)</code></td>
+              <td style="padding: 0.5rem;">Keep only the items that pass a test</td>
+              <td style="padding: 0.5rem;"><code>.filter(|k| k.starts_with("&lt;|reserved_"))</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>.collect()</code></td>
+              <td style="padding: 0.5rem;">Gather into a collection</td>
+              <td style="padding: 0.5rem;"><code>texts.par_iter().map(...).collect()</code></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>.fold(a, f)</code></td>
+              <td style="padding: 0.5rem;">Accumulate into one value</td>
+              <td style="padding: 0.5rem;">Counter updates in the trainer</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>.par_iter()</code></td>
+              <td style="padding: 0.5rem;">Same, split across all cores</td>
+              <td style="padding: 0.5rem;">Corpus loading and batch encoding</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Iterators in Rust are not slower than a hand-written loop. The compiler turns the chain into the same machine code, which is the meaning of zero-cost abstractions. Write them in whichever style reads better.</p>
+    </section>
+
+    <section id="s14">
+      <h2>14. Threads, Arc, and Send/Sync</h2>
+      <p>Rust's thread model is compile-time checked. Two traits carry the whole idea.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.93rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Trait</th>
+              <th style="padding: 0.5rem;">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>Send</code></td>
+              <td style="padding: 0.5rem;">This value can be moved to another thread</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>Sync</code></td>
+              <td style="padding: 0.5rem;">This value can be shared by reference across threads</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Most plain data types are both. A type containing a raw pointer or a lock is neither, and the compiler will stop you from sharing it. The fix is usually to wrap it in a <code>Mutex</code> or an <code>Arc</code>.</p>
+
+      <p><code>Arc</code> is an atomic reference count. Cloning an <code>Arc</code> is cheap and safe from any thread. This is how the encoder shares its vocab:</p>
+
+      <div class="diagram-card">
+        <pre><code>pub struct FastBPEEncoder {
+    token_to_id: Arc&lt;FxHashMap&lt;String, u32&gt;&gt;,
+    id_to_token: Arc&lt;Vec&lt;String&gt;&gt;,
+    merges: MergeTable,
+    promotions: MergeTable,
+    pretokenizer: TamilPretokenizer,
+    special_tokens: FxHashMap&lt;String, u32&gt;,
+    ...
+}</code></pre>
+      </div>
+
+      <p>Every field is immutable after <code>build</code> returns. That is what lets <code>encode_batch</code> call <code>self.encode()</code> from every core at once without a lock.</p>
+
+      <p>Rayon is the library that makes this easy. It runs a fixed thread pool and splits the work automatically:</p>
+
+      <div class="diagram-card">
+        <pre><code>// trainer.rs, corpus loading
+let chunk_size = all_lines.len() / rayon::current_num_threads().max(1);
+let chunk_size = chunk_size.max(50000);
+
+let partial_results: Vec&lt;HashMap&lt;Vec&lt;String&gt;, u32&gt;&gt; = all_lines
+    .par_chunks(chunk_size)
+    .map(|chunk| {
+        let pretok = TamilPretokenizer::new();
+        let mut local_freqs = HashMap::new();
+        for line in chunk {
+            let chunks = pretok.pretokenize(line);
+            for chunk_text in &amp;chunks {
+                let tokens = self.segment_into_clusters(chunk_text);
+                *local_freqs.entry(tokens).or_insert(0) += 1;
+            }
+        }
+        local_freqs
+    })
+    .collect();</code></pre>
+        <p>Read it as: split the lines into chunks, process each chunk on its own thread, each thread keeps a private counter map, then merge the maps. Rayon steals work from busy threads when others go idle, so an uneven split still uses every core.</p>
+      </div>
+
+      <p>One line is worth flagging: <code>let pretok = TamilPretokenizer::new();</code> sits inside the closure on purpose. Each thread builds its own regex, so there is no shared mutable state and no lock.</p>
+    </section>
+
+    <section id="s15">
+      <h2>15. Zero-cost abstractions and the build flags</h2>
+      <p>"Zero cost" means an abstraction you use in source costs nothing extra in the binary. Rust's iterators, generics, and traits are all zero cost: they are resolved at compile time into plain machine code.</p>
+
+      <p>The build flags in <a href="../Cargo.toml"><code>Cargo.toml</code></a> are the other half of the story:</p>
+
+      <div class="diagram-card">
+        <pre><code>[profile.release]
+opt-level = 3      // full optimization
+lto = true          // link-time optimization: let the linker see across crates</code></pre>
+      </div>
+
+      <p><code>opt-level = 3</code> is the usual maximum optimization level. <code>lto = true</code> lets the compiler optimize across crate boundaries, which matters here because <code>regex</code>, <code>serde_json</code>, and the tokenizer crate all end up in one binary.</p>
+
+      <p>Inside the source, <code>#[inline]</code> marks the small hot functions so the compiler inlines them instead of making a call. <code>pack</code>, <code>unpack_b</code>, <code>unpack_rank</code>, <code>unpack_new_id</code>, <code>starts_with</code>, and <code>get</code> in <code>encoder.rs</code> are all marked, because they sit inside the innermost loop.</p>
+
+      <div class="callout">
+        <div class="callout-title">Debug versus release</div>
+        <p><code>cargo run</code> builds unoptimized, which can be 10 to 30 times slower. Every number in the README was measured with <code>--release</code>. If you benchmark without it, you are measuring the compiler's lack of effort.</p>
+      </div>
+    </section>
+
+    <section id="s16">
+      <h2>16. A checklist for reading any Rust file</h2>
+      <p>When you open an unfamiliar Rust file, work through these in order. It takes two minutes and saves an hour of confusion.</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Read the imports</div>
+            <p><code>use</code> lines tell you the vocabulary. A renamed import such as <code>use ahash::{AHashMap as HashMap, AHashSet as HashSet};</code> means the rest of the file says <code>HashMap</code> but means a specific one.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Find the structs</div>
+            <p>Each <code>struct</code> is a memory layout. Ask what is on the stack and what is on the heap.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Find the impl blocks</div>
+            <p><code>impl Foo</code> holds the methods. <code>impl Trait for Foo</code> holds behaviour the type did not write itself, like ordering or serialization.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Read every signature</div>
+            <p><code>&amp;self</code> reads, <code>&amp;mut self</code> writes, <code>Result</code> can fail, <code>Option</code> can be absent, <code>&amp;T</code> borrows. The signature is the contract.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">5</div>
+          <div class="step-body">
+            <div class="step-title">Find the <code>?</code> and <code>match</code></div>
+            <p>These are the error paths. They usually sit at the edges of a function, and they tell you what the function considers recoverable.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">6</div>
+          <div class="step-body">
+            <div class="step-title">Spot the copies</div>
+            <p><code>.clone()</code>, <code>.to_string()</code>, <code>format!</code>. Each one is a heap allocation. In a hot loop, that is the thing to fix.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">7</div>
+          <div class="step-body">
+            <div class="step-title">Ask what the compiler promised</div>
+            <p>If it compiles, the borrows do not overlap, the types match, and every error path is handled. You do not need to check those yourself.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="s17">
+      <h2>17. Worked example: annotate <code>encode_inner</code></h2>
+      <p>This is the whole model applied to the function that does the actual work. It is about 25 lines.</p>
+
+      <div class="diagram-card">
+        <pre><code>fn encode_inner(&amp;self, text: &amp;str) -&gt; Vec&lt;u32&gt; {
+    let mut token_ids = Vec::with_capacity(text.len() / 3);
+    let chunks = self.pretokenizer.pretokenize(text);
+
+    let mut symbols = Vec::with_capacity(64);
+    let mut cache: Vec&lt;Option&lt;(u32, u32)&gt;&gt; = Vec::with_capacity(64);
+    for chunk in chunks {
+        symbols.clear();
+        self.seed_chars(chunk, &amp;mut symbols);
+        self.apply_merges(&amp;mut symbols, &amp;mut cache);
+        for sym in &amp;symbols {
+            if let Some(id) = sym.id {
+                token_ids.push(id);
+            } else {
+                self.push_text(&amp;mut token_ids, &amp;chunk[sym.start..sym.end]);
+            }
+        }
+    }
+
+    token_ids
+}</code></pre>
+      </div>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.88rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.4rem;">Line</th>
+              <th style="padding: 0.4rem;">What the compiler guarantees</th>
+              <th style="padding: 0.4rem;">What happens at runtime</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>fn encode_inner(&amp;self, text: &amp;str)</code></td>
+              <td style="padding: 0.4rem;">The encoder is borrowed read-only, the text is borrowed read-only. Neither is copied.</td>
+              <td style="padding: 0.4rem;">Nothing</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>Vec::with_capacity(text.len() / 3)</code></td>
+              <td style="padding: 0.4rem;">One heap block, sized up front so <code>push</code> never reallocates.</td>
+              <td style="padding: 0.4rem;">One allocation of about a third the input size</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>pretokenize(text)</code></td>
+              <td style="padding: 0.4rem;">The returned <code>&amp;str</code> slices cannot outlive <code>text</code>. The lifetime says so.</td>
+              <td style="padding: 0.4rem;">The regex engine scans the string and collects slice pointers</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>symbols</code>, <code>cache</code></td>
+              <td style="padding: 0.4rem;">Scratch buffers, allocated once and reused for every chunk.</td>
+              <td style="padding: 0.4rem;">No allocation per chunk</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>seed_chars(chunk, &amp;mut symbols)</code></td>
+              <td style="padding: 0.4rem;">Exclusive borrow of <code>symbols</code> for the call only.</td>
+              <td style="padding: 0.4rem;">One <code>Symbol</code> per character, with its byte range</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>apply_merges(&amp;mut symbols, &amp;mut cache)</code></td>
+              <td style="padding: 0.4rem;">Two different variables, so two mutable borrows coexist. The same variable twice would be rejected.</td>
+              <td style="padding: 0.4rem;">Repeatedly merges the lowest ranked pair until no rule applies</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>for sym in &amp;symbols</code></td>
+              <td style="padding: 0.4rem;">Shared borrow of <code>symbols</code> while <code>token_ids</code> is separately borrowed. Disjoint, so it compiles.</td>
+              <td style="padding: 0.4rem;">One token ID per symbol</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.4rem;"><code>if let Some(id) = sym.id</code></td>
+              <td style="padding: 0.4rem;"><code>Option&lt;u32&gt;</code> has no null. Either a known token ID, or a character the vocab does not hold.</td>
+              <td style="padding: 0.4rem;">Push the ID, or fall back to one token per UTF-8 byte</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.4rem;"><code>&amp;chunk[sym.start..sym.end]</code></td>
+              <td style="padding: 0.4rem;">The byte range is checked against the string boundaries, so this cannot panic on a bad index.</td>
+              <td style="padding: 0.4rem;">A slice, no copy</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Now the same function from a systems point of view. The pretokenizer allocates a vector of slices. Each merge shrinks the symbol vector with <code>Vec::remove</code>, which shifts memory. The rule cache is a parallel array that is invalidated at exactly the two positions next to a merge. The token IDs are pushed into a vector that was sized for them at the start. The whole thing touches memory in a predictable, linear pattern, which is why it runs at tens of megabytes per second.</p>
+    </section>
+
+    <section id="s18">
+      <h2>18. Systems vocabulary</h2>
+      <p>The words that show up in comments across this repo.</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.45rem;">Term</th>
+              <th style="padding: 0.45rem;">Meaning</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">stack / heap</td><td style="padding: 0.45rem;">Fast, fixed size, function-local versus slow, growable, shared between threads</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">allocation</td><td style="padding: 0.45rem;">Asking the allocator for a chunk of memory. Costs time on every one</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">cache line</td><td style="padding: 0.45rem;">The 64 byte block the CPU loads from memory. Layout decides how many you touch</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">cache miss</td><td style="padding: 0.45rem;">Data was not in the CPU cache, so it waited on memory. The reason the merge table changed shape</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">bit packing</td><td style="padding: 0.45rem;">Several small values inside one integer, to avoid allocations and speed up hashing</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">zero cost</td><td style="padding: 0.45rem;">An abstraction that compiles away to nothing at runtime</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">monomorphization</td><td style="padding: 0.45rem;">The compiler generating one concrete copy of a generic function per type used</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">inlining</td><td style="padding: 0.45rem;">Pasting a small function's body into its caller instead of making a call</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">LTO</td><td style="padding: 0.45rem;">Link time optimization, letting the compiler optimize across crate boundaries</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">RAII</td><td style="padding: 0.45rem;">Resource acquisition is initialization. The resource is freed when the owner drops</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">borrow checker</td><td style="padding: 0.45rem;">The compiler rule that no data is read while being written</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">unsafe</td><td style="padding: 0.5rem;">Opting out of the borrow checker. There is no <code>unsafe</code> in this repo</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">Send / Sync</td><td style="padding: 0.45rem;">The compile-time permission to move a value to another thread, or share it across them</td></tr>
+            <tr style="border-bottom: 1px solid var(--border);"><td style="padding: 0.45rem;">work stealing</td><td style="padding: 0.45rem;">Idle threads take work from busy ones. How rayon keeps every core busy</td></tr>
+            <tr><td style="padding: 0.45rem;">branch prediction</td><td style="padding: 0.45rem;">The CPU guessing which way an <code>if</code> goes. Why the code comments mention scanning a short slice instead of binary searching it</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="s19">
+      <h2>19. Check your understanding</h2>
+
+      <div class="quiz-box">
+        <div class="quiz-question">1. Why does the trainer pack two token IDs into one <code>u64</code> instead of using a <code>(u32, u32)</code> tuple as the hash map key?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Because a tuple takes more memory in the key.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">Because hashing a single integer is much cheaper than hashing a pair, and it avoids a heap allocation per key.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Because Rust does not allow tuples as map keys.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Because <code>u64</code> sorts differently than <code>u32</code>.</button>
+        <div class="feedback" id="fb1"></div>
+      </div>
+
+      <div class="quiz-box">
+        <div class="quiz-question">2. What does <code>&amp;mut self</code> on <code>fn train(&amp;mut self, num_merges: usize)</code> tell the compiler?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The method may read the trainer's fields.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The method returns a new trainer.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">The method takes exclusive mutable access, so no other code can read or write the trainer during the call.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The method copies the trainer onto the heap.</button>
+        <div class="feedback" id="fb2"></div>
+      </div>
+
+      <div class="quiz-box">
+        <div class="quiz-question">3. The merge table stores rules in a sorted array with offsets instead of a hash map. Why?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">A hash map of 122K merges stopped fitting in the CPU cache, so the lookups missed memory. A short contiguous slice does not.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Hash maps cannot store more than 10,000 entries in Rust.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Sorted arrays are always faster than hash maps.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It makes the tokenizer produce fewer tokens.</button>
+        <div class="feedback" id="fb3"></div>
+      </div>
+
+      <div class="quiz-box">
+        <div class="quiz-question">4. In <code>let (vocab, merges) = match load_tokenizer(file) { Ok(v) =&gt; v, Err(e) =&gt; { ...; return; } };</code>, what is the point of the <code>match</code>?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It converts the error into an exception.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">The failure is part of the return type, so the compiler forces the program to handle it.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It runs the two branches in parallel.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It lets the compiler skip the error check.</button>
+        <div class="feedback" id="fb4"></div>
+      </div>
+
+      <div class="quiz-box">
+        <div class="quiz-question">5. <code>encode_batch</code> calls <code>self.encode()</code> from every core at once. What makes that safe in Rust?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The <code>Arc</code> adds a lock around the vocab.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The <code>Sync</code> bound on <code>T</code> pauses the other threads.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">The encoder's fields are immutable after construction, and the compiler checks that shared access is safe.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Rust copies the encoder into each thread.</button>
+        <div class="feedback" id="fb5"></div>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">Now go run it</div>
+        <p>Read the model in your head, then confirm it against the machine. From the repository root:</p>
+        <pre><code>cargo run --release --bin vocabcount
+cargo run --release --bin train -- ./data/tamil_corpus.txt 50000 ./output/tamil_tokenizer.json
+cargo run --release --bin encode -- ./output/tamil_tokenizer.json "வணக்கம்!"</code></pre>
+        <p>The first command prints the base vocabulary breakdown, the second trains, the third encodes one string. Watch where the <code>clone()</code> calls are in the trainer, and count how many allocations <code>encode_inner</code> makes for one line of text.</p>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0010-rust-syntax-to-read-this-codebase.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 10: The Rust you need to read this codebase</span>
+      </a>
+      <a href="../lessons/0012-canonical-model-and-hf-export.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 12: The canonical model and the Hugging Face export</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 11 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const box = btn.closest('.quiz-box');
+      const options = box.querySelectorAll('.quiz-option');
+      options.forEach(function (b) {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = box.querySelector('.feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct.</span>';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span>';
+      }
+    }
+  </script>
+</body>
+</html>

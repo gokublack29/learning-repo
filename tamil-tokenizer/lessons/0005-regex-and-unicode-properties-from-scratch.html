@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 5: Regex and Unicode Properties from Scratch</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0005</div>
+      <h1>Regex and Unicode Properties from Scratch</h1>
+      <p class="lead">A complete zero-background guide to regular expression symbols, Unicode categories, and the exact pretokenizer pattern.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 5 of 13.</strong> <span class="dim">The pipeline. What the Unicode categories mean.</span>
+    </div>
+
+    <section>
+      <h2>1. What is a Regular Expression (Regex)?</h2>
+      <p>A regular expression is a formula that describes a <strong>shape of text</strong> rather than an exact word.</p>
+      <ul>
+        <li><strong>Normal search:</strong> Find the exact string <code>"வணக்கம்"</code>.</li>
+        <li><strong>Regex search:</strong> Find <em>"an optional space, followed by any Tamil consonants, each carrying its attached vowel signs"</em>.</li>
+      </ul>
+      <p>To read any regex, you only need to memorize six basic symbols:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">|</div>
+          <div class="step-body">
+            <div class="step-title">OR operator</div>
+            <p>Matches the pattern on the left OR the pattern on the right. <code>cat|dog</code> matches either "cat" or "dog".</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">?</div>
+          <div class="step-body">
+            <div class="step-title">Optional (0 or 1 time)</div>
+            <p>The character right before <code>?</code> is optional. <code> ?</code> means "match a space if one exists, otherwise keep going".</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">*</div>
+          <div class="step-body">
+            <div class="step-title">Repeat (0 or more times)</div>
+            <p>Matches zero, one, or twenty times. <code>a*</code> matches nothing, "a", "aa", or "aaaa".</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">+</div>
+          <div class="step-body">
+            <div class="step-title">Repeat (1 or more times)</div>
+            <p>Must appear at least once, and repeats as long as matching characters continue. <code>a+</code> matches "a", "aa", but never empty text.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">[ ]</div>
+          <div class="step-body">
+            <div class="step-title">Character Set (Pick any one)</div>
+            <p>Matches any single item inside the brackets. <code>[abc]</code> matches an "a", a "b", or a "c".</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">(?: )</div>
+          <div class="step-body">
+            <div class="step-title">Grouping Container</div>
+            <p>Bundles multiple pieces together so repetition operators (like <code>+</code>) apply to the whole group as a single unit.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. What are Unicode Properties (\p{...})?</h2>
+      <p>Unicode assigns every character on Earth an official tag describing its linguistic role:</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Symbol</th>
+              <th style="padding: 0.5rem;">Category</th>
+              <th style="padding: 0.5rem;">What it matches</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>\p{L}</code></td>
+              <td style="padding: 0.5rem;">Letter</td>
+              <td style="padding: 0.5rem;">Any letter in any language (English, Tamil, Hindi, Greek)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>\p{Lu}</code></td>
+              <td style="padding: 0.5rem;">Letter, uppercase</td>
+              <td style="padding: 0.5rem;">Capital letters only (<code>A, B, C</code>)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>\p{Ll}</code></td>
+              <td style="padding: 0.5rem;">Letter, lowercase</td>
+              <td style="padding: 0.5rem;">Small letters only (<code>a, b, c</code>)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>\p{Lo}</code></td>
+              <td style="padding: 0.5rem;">Letter, other</td>
+              <td style="padding: 0.5rem;"><strong>Tamil consonants & independent vowels!</strong> (Tamil has no upper or lower case)</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>\p{M}</code></td>
+              <td style="padding: 0.5rem;">Mark (combining)</td>
+              <td style="padding: 0.5rem;"><strong>The pulli dot (<code>்</code>) and all vowel signs (<code>ா, ி, ீ, ு...</code>)</strong></td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>\p{N}</code></td>
+              <td style="padding: 0.5rem;">Number</td>
+              <td style="padding: 0.5rem;">Digits (<code>0-9</code>, Tamil digits <code>௦-௯</code>)</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>\p{P}</code></td>
+              <td style="padding: 0.5rem;">Punctuation</td>
+              <td style="padding: 0.5rem;">Punctuation marks (<code>, . ! ? : -</code>)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Dismantling the Tamil Regex Step by Step</h2>
+      <p>Now look at line 25 of <a href="../pretokenizer.rs#L25"><code>pretokenizer.rs</code></a>:</p>
+      <pre><code>| ?(?:[\p{Lt}\p{Lm}\p{Lo}]\p{M}*)+</code></pre>
+
+      <p>Here is what happens left to right:</p>
+      <ol>
+        <li><code>|</code>: Separator meaning "OR match this alternative".</li>
+        <li><code> ?</code>: If there is a space before the word, capture it with the word.</li>
+        <li><code>(?: ... )+</code>: Repeat the syllable cluster inside as many times as needed to capture the entire word.</li>
+        <li><code>[\p{Lt}\p{Lm}\p{Lo}]</code>: Matches one base Tamil letter (e.g. consonant <code>க</code> or vowel <code>அ</code>).</li>
+        <li><code>\p{M}*</code>: Matches zero or more combining marks immediately following that letter. If the letter has a pulli (<code>்</code>) or a vowel sign (<code>ா</code>), it is scooped into the cluster.</li>
+      </ol>
+
+      <div class="callout">
+        <div class="callout-title">Trace on the word "வணக்கம்" (vanakkam)</div>
+        <p>The regex steps through each syllabic cluster:</p>
+        <ol>
+          <li><code>வ</code>: 1 letter + 0 marks (matches!)</li>
+          <li><code>ண</code>: 1 letter + 0 marks (matches!)</li>
+          <li><code>க்</code>: 1 letter (<code>க</code>) + 1 mark (<code>்</code>) (matches!)</li>
+          <li><code>க</code>: 1 letter + 0 marks (matches!)</li>
+          <li><code>ம்</code>: 1 letter (<code>ம</code>) + 1 mark (<code>்</code>) (matches!)</li>
+        </ol>
+        <p>The outer <code>+</code> ties all five clusters into the single pretokenized word chunk: <code>"வணக்கம்"</code>.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">Why are Tamil consonants categorized under \p{Lo} instead of \p{Lu} or \p{Ll}?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">Tamil has no uppercase or lowercase.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Tamil was created before computers existed.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Tamil letters only use one byte each.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Tamil consonants cannot carry any marks.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Primary Source</h2>
+      <p>Read the official Unicode technical report on regular expressions: <br>
+      <a href="https://unicode.org/reports/tr18/" target="_blank" rel="noopener">Unicode Technical Standard #18: Unicode Regular Expressions</a>.</p>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0004-pretokenization-and-the-unicode-regex.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 4: Pretokenization and the Unicode regex</span>
+      </a>
+      <a href="../lessons/0006-regex-quantifiers-and-grouping-by-example.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 6: Regex quantifiers and grouping</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 5 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> Scripts like Tamil, Chinese, and Arabic are uncased, so their letters are categorized as <code>\\p{Lo}</code> (Letter, other).';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> <code>\\p{Lu}</code> is uppercase and <code>\\p{Ll}</code> is lowercase. Because Tamil has no letter casing, its letters are categorized under <code>\\p{Lo}</code> (Letter, other).';
+      }
+    }
+  </script>
+</body>
+</html>

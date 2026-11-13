@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 1: Entry Points and Data Flow</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0001</div>
+      <h1>Entry Points and Data Flow</h1>
+      <p class="lead">How this repo turns raw Tamil text into numbers and back, explained without assuming Rust or BPE knowledge.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 1 of 13.</strong> <span class="dim">Orientation. Start here. What the program does and how text becomes token IDs.</span>
+    </div>
+
+    <section>
+      <h2>1. The Two Big Ideas (BPE and Rust)</h2>
+      
+      <div class="callout">
+        <div class="callout-title">What is BPE (Byte Pair Encoding)?</div>
+        <p>Computers and neural networks do not read text directly; they only process numbers (called <strong>token IDs</strong>).</p>
+        <p>BPE is a simple compression recipe: start with individual characters or bytes, count which pair of symbols appears together most often in a corpus, merge that pair into one new token, and repeat. Frequent words become a single number, while rare words break into smaller syllables or base bytes.</p>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">How Rust Projects Work</div>
+        <p>In Rust, <code>Cargo.toml</code> is the project manifest (like <code>package.json</code> in Node or <code>pyproject.toml</code> in Python).</p>
+        <p>Code lives in two kinds of files:</p>
+        <ul>
+          <li><strong>Library (<code>lib.rs</code>):</strong> Reusable logic shared across the project.</li>
+          <li><strong>Binaries (<code>[[bin]]</code> in Cargo.toml):</strong> Standalone programs with a <code>fn main()</code> function that you execute from the command line.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. The Three Entry Points You Actually Run</h2>
+      <p>This repo has several benchmark and test scripts, but your actual workflow centers on three runnable binaries:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Training: <code>train.rs</code></div>
+            <p>Learns BPE merge rules from a raw text file and produces a trained JSON vocabulary.</p>
+            <code>cargo run --release --bin train &lt;corpus.txt&gt; &lt;num_merges&gt; &lt;output.json&gt;</code>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Interactive Testing: <code>main.rs</code></div>
+            <p>Loads the trained tokenizer JSON and opens a REPL in your terminal so you can type text and see token IDs live.</p>
+            <code>cargo run --bin main output/tamil_tokenizer.json</code>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Single String Encoding: <code>encode.rs</code></div>
+            <p>Runs a single sentence through the tokenizer and prints token IDs and reconstructed text.</p>
+            <code>cargo run --release --bin encode output/tamil_tokenizer.json "வணக்கம்"</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. How Data Flows Through the Repo</h2>
+      <p>Data moves through this codebase in two distinct lifecycles: <strong>Training</strong> and <strong>Inference</strong>.</p>
+
+      <h3>Lifecycle A: Training Flow (Learning the Vocabulary)</h3>
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">A1</div>
+          <div class="step-body">
+            <div class="step-title">Seed Base Vocabulary (<code>vocab.rs</code>)</div>
+            <p>Initializes 1,135 seed tokens: 256 raw bytes (fallback), independent vowels, consonants, vowel signs, and 528 two-consonant conjunct stems (consonant + pulli + consonant).</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">A2</div>
+          <div class="step-body">
+            <div class="step-title">Pre-tokenize Corpus (<code>pretokenizer.rs</code>)</div>
+            <p>Uses regular expressions to split large text files into word chunks across multiple CPU cores via Rayon.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">A3</div>
+          <div class="step-body">
+            <div class="step-title">Iterative Merging (<code>trainer.rs</code>)</div>
+            <p>Packs adjacent token pairs into 64-bit integer keys. In each step, picks the most frequent pair, creates a new token ID, and updates all words.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">A4</div>
+          <div class="step-body">
+            <div class="step-title">Save Tokenizer (<code>output/*.json</code>)</div>
+            <p>Writes the final JSON artifact containing the token-to-ID map and ordered merge list.</p>
+          </div>
+        </div>
+      </div>
+
+      <h3>Lifecycle B: Inference Flow (Encoding Text)</h3>
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">B1</div>
+          <div class="step-body">
+            <div class="step-title">Input Text String</div>
+            <p>Raw UTF-8 text string enters <code>encoder.encode(text)</code>.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">B2</div>
+          <div class="step-body">
+            <div class="step-title">Chunking (<code>pretokenizer.rs</code>)</div>
+            <p>Regex splits the sentence into words and punctuation boundaries.</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">B3</div>
+          <div class="step-body">
+            <div class="step-title">Base Mapping & Priority Merging (<code>encoder.rs</code>)</div>
+            <p>Each chunk becomes base token IDs. The encoder then greedily applies learned merges in priority order (lowest merge rank first).</p>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num">B4</div>
+          <div class="step-body">
+            <div class="step-title">Output: <code>Vec&lt;u32&gt;</code></div>
+            <p>A simple list of 32-bit unsigned integers representing the tokens ready for a language model.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">Which file contains the entry point to learn new BPE merges from raw text?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">pretokenizer.rs</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">train.rs (main)</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">encode.rs (run)</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">lib.rs (export)</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Primary Source</h2>
+      <p>Read Section 3 ("Byte Pair Encoding") of the original paper: <br>
+      <a href="https://arxiv.org/abs/1508.07909" target="_blank" rel="noopener">Neural Machine Translation of Rare Words with Subword Units (Sennrich et al., 2016)</a>.</p>
+    </section>
+
+    <div class="pagenav">
+      <span class="empty">Nothing before this. You are at the start.</span>
+      <a href="../lessons/0002-tamil-orthography-and-conjunct-stems.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 2: Tamil orthography and conjunct stems</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 1 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> <code>train.rs</code> contains <code>fn main()</code> which handles CLI arguments and drives the trainer.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> <code>train.rs</code> is the binary entry point for training. The others handle chunking, encoding, or shared definitions.';
+      }
+    }
+  </script>
+</body>
+</html>

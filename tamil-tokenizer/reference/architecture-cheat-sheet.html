@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Architecture Reference Cheat Sheet</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html" class="here">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Quick Reference</div>
+      <h1>Tamil Tokenizer Architecture Sheet</h1>
+      <p class="lead">Cheat sheet of runnable CLI commands, core modules, and data flow paths.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Reference.</strong> <span class="dim">Not a numbered step. Jump in from any page, or keep going through the learning path.</span>
+    </div>
+
+    <section>
+      <h2>CLI Commands</h2>
+      <pre><code># 1. Encode text via CLI
+cargo run --release --bin encode output/tamil_tokenizer.json "வணக்கம் உலகம்"
+
+# 2. Interactive prompt
+cargo run --bin main output/tamil_tokenizer.json
+
+# 3. Train from corpus
+cargo run --release --bin train data/tamil_corpus.txt 50000 output/tamil_tokenizer.json 1
+
+# 4. Export to Hugging Face format
+cargo run --release --bin export_hf output/tamil_tokenizer.json output/hf_model/</code></pre>
+    </section>
+
+    <section>
+      <h2>Core Engine Modules</h2>
+      <ul>
+        <li><code>lib.rs</code>: Crate root, exposes public API, exports <code>load_tokenizer</code>.</li>
+        <li><code>vocab.rs</code>: Builds base seed vocabulary (1,135 tokens including Tamil letters, vowel signs, conjuncts, and raw bytes).</li>
+        <li><code>pretokenizer.rs</code>: Splits input text into word chunks using regex.</li>
+        <li><code>trainer.rs</code>: Learns BPE merges across CPU threads using Rayon and bit-packed 64-bit pair keys.</li>
+        <li><code>encoder.rs</code>: Fast greedy BPE encoder using priority merge ranks.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Data Flow Summary</h2>
+      <pre><code>[Raw Text Corpus]
+       │
+       ▼
+[pretokenizer.rs] ──> Splits text into words using regex
+       │
+       ▼
+  [trainer.rs]    ──> Counts adjacent pairs, merges top pair, repeats N times
+       │
+       ▼
+ [tokenizer.json] ──> Saves vocab map {token: id} and merge pairs
+       │
+       ▼
+  [encoder.rs]    ──> Maps new text to base tokens, applies merges -> Vec&lt;u32&gt;</code></pre>
+    </section>
+    <div class="pagenav">
+      <span class="empty">Nothing before this. You are at the start.</span>
+      <a href="../index.html#path">
+        <span class="dir">Next</span>
+        <span class="label">The learning path</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>One-page reference. Not part of the 13 steps. Use it from any page.</p>
+    </footer>
+  </div>
+</body>
+</html>

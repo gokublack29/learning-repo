@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 7: The BPE Training Engine and 64-bit Pair Packing</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0007</div>
+      <h1>The BPE Training Engine and 64-bit Pair Packing</h1>
+      <p class="lead">How trainer.rs processes millions of words, counts neighbor pairs at hardware speed, and exports tokenizer JSON files.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 7 of 13.</strong> <span class="dim">The algorithm. The training loop and the pair packing.</span>
+    </div>
+
+    <section>
+      <h2>1. The BPE Training Loop: Step by Step</h2>
+      <p>Training a tokenizer is an iterative greedy search. Given a corpus file and a target merge count (e.g. 50,000), <a href="../trainer.rs"><code>trainer.rs</code></a> executes four phases:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Parallel Word Counting (Rayon)</div>
+            <p>Instead of looping through gigabytes of text character-by-character, Rayon distributes lines across CPU threads to count unique words and their frequencies. If the word <code>"தமிழ்நாடு"</code> appears 5,000 times, it is stored once with a counter of 5,000.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Initial Base Token Seeding</div>
+            <p>Every unique word is split into its starting base tokens (the 1,135 seed tokens from <code>vocab.rs</code>, including consonants, vowels, and conjunct stems).</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Adjacent Pair Counting</div>
+            <p>For every word, count every neighbor pair. In a word with tokens <code>[A, B, C]</code>, the pairs are <code>(A, B)</code> and <code>(B, C)</code>. Each pair's score is multiplied by the word's corpus frequency.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Merge and Repeat</div>
+            <p>Pick the pair with the highest overall frequency. Mint a new token ID for it, record the merge rule <code>(left, right) -&gt; new_id</code>, replace that pair inside all affected words, and repeat for the next iteration.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Three Systems Engineering Tricks in trainer.rs</h2>
+      <p>A naive BPE trainer written in Python can take hours or days to run 50,000 merges. This Rust codebase finishes in minutes because of three specific systems decisions:</p>
+
+      <h3>Trick A: 64-bit Bit-Packed Pair Keys</h3>
+      <p>In standard code, a token pair is stored as a tuple of strings or structs: <code>("வண", "க்கம்")</code>. Allocating millions of tiny string objects creates severe memory fragmentation.</p>
+      <p>Look at <a href="../trainer.rs#L16-L23"><code>trainer.rs:16-23</code></a>:</p>
+      <pre><code>#[inline]
+fn pack_pair(a: TokId, b: TokId) -&gt; u64 {
+    ((a as u64) &lt;&lt; 32) | (b as u64)
+}</code></pre>
+      <div class="diagram-card">
+        <p><strong>How bit-packing works:</strong></p>
+        <p>A token ID is a 32-bit integer (<code>u32</code>). A 64-bit integer (<code>u64</code>) has 64 bits of space. By shifting token <code>a</code> 32 bits to the left and placing token <code>b</code> in the lower 32 bits, the entire pair fits into a <strong>single CPU register</strong> with zero heap allocations.</p>
+      </div>
+
+      <h3>Trick B: Max-Heap (<code>BinaryHeap</code>) for O(1) Lookups</h3>
+      <p>If you have 100,000 active candidate pairs, scanning all 100,000 pairs to find the most frequent pair at every merge step would be terribly slow (<code>O(N)</code> per merge). The trainer uses a <code>BinaryHeap</code> (priority queue): the top of the heap always presents the highest-frequency pair in <code>O(1)</code> time.</p>
+
+      <h3>Trick C: Inverted Index (<code>pair_positions</code>)</h3>
+      <p>When pair <code>(A, B)</code> merges into <code>C</code>, how does the engine know which words to update? Scanning all unique words in the corpus would waste enormous time.</p>
+      <p>Instead, <code>pair_positions: HashMap&lt;u64, HashSet&lt;usize&gt;&gt;</code> maintains a list of exact word indices containing that pair. The trainer only touches the words that actually contain the pair.</p>
+    </section>
+
+    <section>
+      <h2>3. The Output Artifact: tamil_tokenizer.json</h2>
+      <p>When training finishes, <a href="../trainer.rs#L57-L69"><code>trainer.save_tokenizer_with_reserved_tokens</code></a> writes a JSON file containing three sections:</p>
+      <ol>
+        <li><code>"vocab"</code>: A map from every token string to its integer ID (<code>{"&lt;|startoftext|&gt;": 987, "வணக்கம்": 974...}</code>).</li>
+        <li><code>"merges"</code>: An ordered list of pairs (<code>[["ண", "்"], ["ட", "ி"], ...]</code>). The order of this list is strictly preserved because inference must apply earlier merges first!</li>
+        <li><code>"metadata"</code>: Total vocabulary size, merge count, and training duration.</li>
+      </ol>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">Why does trainer.rs pack pair (a, b) into a single 64-bit integer ((a &lt;&lt; 32) | b)?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">It eliminates heap memory allocations.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It converts Tamil text into UTF-16 code.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It encrypts the tokens for privacy.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It limits the maximum vocabulary to 64.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0006-regex-quantifiers-and-grouping-by-example.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 6: Regex quantifiers and grouping</span>
+      </a>
+      <a href="../lessons/0008-inference-priority-merges-and-byte-fallback.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 8: Inference: priority merges and byte fallback</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 7 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> Storing two 32-bit IDs in one 64-bit integer fits in a CPU register and avoids allocating tuples or strings on the heap.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> Bit-packing places both 32-bit IDs into one 64-bit integer, avoiding millions of heap allocations during frequency counting.';
+      }
+    }
+  </script>
+</body>
+</html>

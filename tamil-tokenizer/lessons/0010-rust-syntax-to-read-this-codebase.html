@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 10: The Rust You Need to Read This Codebase</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0010</div>
+      <h1>The Rust You Need to Read This Codebase</h1>
+      <p class="lead">A practical, zero-fluff translation guide for every Rust pattern, type, and symbol used in this repository.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 10 of 13.</strong> <span class="dim">The language. Every Rust pattern in the repo, translated.</span>
+    </div>
+
+    <section>
+      <h2>1. The Five Core Data Types</h2>
+      <p>Rust enforces exact memory sizes. In this repo, you will see five types on almost every line:</p>
+
+      <div class="diagram-card">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.95rem;">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border); text-align: left;">
+              <th style="padding: 0.5rem;">Type</th>
+              <th style="padding: 0.5rem;">What it is</th>
+              <th style="padding: 0.5rem;">Where it appears in this repo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>u32</code></td>
+              <td style="padding: 0.5rem;">Unsigned 32-bit integer (0 to 4.2 billion)</td>
+              <td style="padding: 0.5rem;"><strong>Token IDs</strong> (<code>TokId</code>). Every token is a <code>u32</code>.</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>u64</code></td>
+              <td style="padding: 0.5rem;">Unsigned 64-bit integer</td>
+              <td style="padding: 0.5rem;"><strong>Bit-packed pair keys</strong> (packs two <code>u32</code> IDs into one word).</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>usize</code></td>
+              <td style="padding: 0.5rem;">Memory pointer-sized integer</td>
+              <td style="padding: 0.5rem;"><strong>Array indexes and lengths</strong> (e.g. <code>vec.len()</code>).</td>
+            </tr>
+            <tr style="border-bottom: 1px solid var(--border);">
+              <td style="padding: 0.5rem;"><code>String</code></td>
+              <td style="padding: 0.5rem;">Owned, growable text allocated on the heap</td>
+              <td style="padding: 0.5rem;">Stored token text inside the dictionary (<code>HashMap&lt;String, u32&gt;</code>).</td>
+            </tr>
+            <tr>
+              <td style="padding: 0.5rem;"><code>&amp;str</code></td>
+              <td style="padding: 0.5rem;">A read-only view ("borrow") of text sitting in memory</td>
+              <td style="padding: 0.5rem;">Input arguments like <code>fn encode(&amp;self, text: &amp;str)</code> (avoids copying text).</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. No <code>null</code> and No Exceptions: <code>Option</code> and <code>Result</code></h2>
+      <p>Rust does not have <code>null</code> or runtime exceptions (like <code>NullPointerException</code>). Instead, it uses two enums:</p>
+
+      <h3>A. <code>Option&lt;T&gt;</code> (The Safe Null)</h3>
+      <p>A value is either <code>Some(value)</code> or <code>None</code>:</p>
+      <pre><code>// Looking up a token in a map returns an Option:
+let id: Option&lt;&amp;u32&gt; = vocab.get("வணக்கம்");
+// If found: Some(&amp;974)
+// If missing: None</code></pre>
+
+      <h3>B. <code>Result&lt;T, E&gt;</code> and the <code>?</code> Operator</h3>
+      <p>Functions that can fail return <code>Ok(value)</code> on success or <code>Err(error)</code> on failure.</p>
+      <div class="diagram-card">
+        <p><strong>The Magic Question Mark (<code>?</code>):</strong></p>
+        <pre><code>let data = std::fs::read_to_string(path)?;</code></pre>
+        <p>The <code>?</code> at the end means: <em>"If read_to_string succeeds, unwrap the text into <code>data</code>. If it fails, immediately return the <code>Err</code> out of this function."</em> It replaces 10 lines of try/catch boilerplate.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Pattern Matching: <code>match</code> and <code>if let</code></h2>
+      <p>Rust forces you to handle every possible outcome using pattern matching.</p>
+
+      <h3>A. <code>match</code> (Switch statement with superpowers)</h3>
+      <p>Look at line 13 of <a href="../main.rs#L13-L19"><code>main.rs</code></a>:</p>
+      <pre><code>let (vocab, merges) = match load_tokenizer(&amp;vocab_file) {
+    Ok(v) =&gt; v,
+    Err(e) =&gt; {
+        eprintln!("Failed to load vocab: {}", e);
+        return;
+    }
+};</code></pre>
+      <p>If <code>load_tokenizer</code> succeeds, it extracts <code>(vocab, merges)</code>. If it fails, it prints the error and exits.</p>
+
+      <h3>B. <code>if let</code> (Extract only when present)</h3>
+      <p>Look at line 360 of <a href="../encoder.rs#L360"><code>encoder.rs</code></a>:</p>
+      <pre><code>if let Some(id) = sym.id {
+    token_ids.push(id);
+}</code></pre>
+      <p>This checks: <em>"If <code>sym.id</code> is <code>Some(id)</code>, extract the number into variable <code>id</code> and push it. If it is <code>None</code>, skip it."</em></p>
+    </section>
+
+    <section>
+      <h2>4. Structs, Methods, and Borrowing (<code>&amp;self</code> vs <code>&amp;mut self</code>)</h2>
+      <p>In Rust, data (fields) and functions (methods) are defined separately:</p>
+      <pre><code>// 1. Define the data structure
+pub struct OptimizedBPETrainer {
+    words: Vec&lt;WordData&gt;,
+    pair_freq: HashMap&lt;u64, u32&gt;,
+}
+
+// 2. Attach functions to the struct
+impl OptimizedBPETrainer {
+    // Constructor (Self is an alias for OptimizedBPETrainer)
+    pub fn new() -&gt; Self { ... }
+
+    // Read-only method (&amp;self): Can read data, CANNOT modify fields
+    pub fn len(&amp;self) -&gt; usize {
+        self.words.len()
+    }
+
+    // Mutable method (&amp;mut self): Has exclusive permission to MODIFY fields
+    pub fn train(&amp;mut self, num_merges: usize) {
+        self.words.push(...); // Allowed!
+    }
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>5. Iterators and Rayon Multithreading</h2>
+      <p>Instead of manual <code>for</code> loops, Rust uses chainable iterators:</p>
+      <pre><code>// 1. Standard single-thread iterator:
+let ids: Vec&lt;u32&gt; = tokens.iter().map(|t| token_to_id[t]).collect();
+// .iter()   -&gt; look at each item
+// .map(...) -&gt; transform each item
+// .collect() -&gt; assemble results back into a Vec
+
+// 2. Rayon parallel multithreaded iterator:
+let batch: Vec&lt;Vec&lt;u32&gt;&gt; = texts.par_iter().map(|t| self.encode(t)).collect();
+// .par_iter() splits the work across all available CPU cores automatically!</code></pre>
+    </section>
+
+    <section>
+      <h2>6. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">In a Rust method, what does &amp;mut self indicate?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">The method can modify the struct's fields.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The method deletes the struct from memory.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The method runs on a background GPU thread.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">The method is only accessible from C code.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0009-tamil-tokenizer-vs-standard-and-zero-training.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 9: Differentiators and the zero-training base</span>
+      </a>
+      <a href="../lessons/0011-rust-systems-language-mental-model.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 11: Rust as a systems language</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 10 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> <code>&amp;mut self</code> grants exclusive mutable access to change the struct\'s state.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> <code>&amp;self</code> is read-only; <code>&amp;mut self</code> grants permission to mutate fields.';
+      }
+    }
+  </script>
+</body>
+</html>

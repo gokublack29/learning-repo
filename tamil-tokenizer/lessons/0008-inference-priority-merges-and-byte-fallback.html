@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 8: Fast Inference and Lossless Byte Fallback</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0008</div>
+      <h1>Fast Inference and Lossless Byte Fallback</h1>
+      <p class="lead">How encoder.rs turns new text into token IDs in microseconds, merges by rank priority, and handles unseen characters without data loss.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 8 of 13.</strong> <span class="dim">The algorithm. What happens at encode time, and why nothing is dropped.</span>
+    </div>
+
+    <section>
+      <h2>1. The Runtime Inference Pipeline</h2>
+      <p>When you call <code>encoder.encode(text)</code>, the text flows through three distinct steps in <a href="../encoder.rs"><code>encoder.rs</code></a>:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Chunking (<code>pretokenizer.rs</code>)</div>
+            <p>Splits text into independent words and punctuation boundaries using the Unicode regex we explored in Lesson 4.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Character Seeding</div>
+            <p>Converts each chunk into a sequence of starting character symbols.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Priority Merging (<code>apply_merges</code>)</div>
+            <p>Scans neighbor pairs and repeatedly merges the pair with the <strong>lowest rank</strong> until no more merges apply.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Byte Fallback</div>
+            <p>Any character or byte not in the subword vocabulary is emitted as a raw byte token (<code>&lt;0xNN&gt;</code>). Nothing is ever dropped.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Why Merge Priority (Rank Order) Matters</h2>
+      <p>During training, the most frequent pairs are learned first. The order in which merges are learned is called their <strong>rank</strong>:</p>
+      <ul>
+        <li><strong>Rank 0:</strong> The #1 most common pair in the training corpus (highest priority).</li>
+        <li><strong>Rank 100:</strong> Less common than Rank 0.</li>
+        <li><strong>Rank 29,999:</strong> Learned near the very end of training.</li>
+      </ul>
+      <p>At inference time, if a word contains multiple candidate pairs, the encoder <strong>always merges the lowest rank pair first</strong>. This guarantees that tokenization is 100% deterministic and matches exactly how the model was trained.</p>
+    </section>
+
+    <section>
+      <h2>3. Systems Engineering: CSR Layout Merge Table</h2>
+      <p>How does the encoder look up whether two adjacent token IDs <code>(a, b)</code> have a merge rule?</p>
+      
+      <div class="callout">
+        <div class="callout-title">The Hash Map Cache Disaster</div>
+        <p>In early versions, the merge table was a standard <code>HashMap&lt;(u32, u32), (u32, u32)&gt;</code>. At 120,000 merges, the hash map became so large that it blew past the CPU's L1/L2/L3 hardware caches.</p>
+        <p>Every lookup caused a CPU cache miss, plummeting throughput from <strong>17.4 MB/s down to 7.3 MB/s</strong>.</p>
+      </div>
+
+      <p>In <a href="../encoder.rs#L72-L84"><code>encoder.rs:72-84</code></a>, the author replaced the hash map with a <strong>Compressed Sparse Row (CSR)</strong> layout:</p>
+      <ul>
+        <li><code>starts: Vec&lt;u64&gt;</code>: A tiny bitset. With 1 bit per token ID, it checks in 1 CPU instruction: <em>"Does token A start any merge rule at all?"</em> If 0, it skips instantly without touching RAM.</li>
+        <li><code>data: Vec&lt;u64&gt;</code>: A contiguous array packing second token <code>b</code>, <code>rank</code>, and <code>new_id</code> into a single 64-bit integer. Lookups stay inside fast CPU cache lines.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>4. The Lossless Guarantee: Byte Fallback (Never &lt;unk&gt;)</h2>
+      <p>What happens when a user types text with an unseen character, an emoji (<code>🔥</code>), or a rare foreign symbol?</p>
+      <p>Traditional tokenizers throw an unknown token error and replace the text with <code>&lt;unk&gt;</code>, losing the information forever.</p>
+      <p>This tokenizer uses <strong>byte fallback</strong>: every byte from 0 to 255 has its own dedicated token (<code>&lt;0x00&gt;</code> to <code>&lt;0xFF&gt;</code>). Look at what happens to the fire emoji in our real test:</p>
+
+      <div class="diagram-card">
+        <p>Input: <code>"தமிழ் 🔥"</code></p>
+        <p>Tokens without specials: <code>[374, 428, 516, 607, 31585, 31504, 31493, 31510]</code></p>
+        <p>Notice the last 4 tokens: the 4 UTF-8 bytes of <code>🔥</code> (<code>0xF0 0x9F 0x94 0xA5</code>) are mapped into byte tokens. When decoded, it reconstructs <code>"தமிழ் 🔥"</code> with <strong>zero data loss</strong>.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">What does this tokenizer do when it encounters an emoji or unseen character?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">Maps it into raw UTF-8 byte tokens.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Replaces it with an unknown token tag.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Crashes the application with an error.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Deletes the emoji from the text string.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0007-bpe-training-engine-and-pair-packing.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 7: The BPE training engine and pair packing</span>
+      </a>
+      <a href="../lessons/0009-tamil-tokenizer-vs-standard-and-zero-training.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 9: Differentiators and the zero-training base</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 8 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> The 256 base byte tokens guarantee that every byte in Unicode can be represented losslessly.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> The tokenizer never uses &lt;unk&gt;; it decomposes unmodeled symbols into raw UTF-8 byte tokens.';
+      }
+    }
+  </script>
+</body>
+</html>

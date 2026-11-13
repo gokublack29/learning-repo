@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 3: The 23x23 Math and Vocabulary Bloat</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0003</div>
+      <h1>The 23 × 23 Math and Vocabulary Bloat</h1>
+      <p class="lead">How the 528 conjunct stems are calculated, why vowel signs are excluded, and what happened when adding them was tested.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 3 of 13.</strong> <span class="dim">Orientation. The 528 conjunct stems, and the measurement that rejected 6,348 more.</span>
+    </div>
+
+    <section>
+      <h2>1. The Formula: Consonant + Pulli + Consonant</h2>
+      <p>The 23 × 23 math is <strong>strictly</strong> two consonants joined by a pulli dot. Vowel signs are not in this list.</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">The 23 Consonants</div>
+            <p>18 traditional Tamil consonants + 5 Grantha consonants (<code>ஜ, ஶ, ஷ, ஸ, ஹ</code>) = <strong>23 consonants</strong>.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">The Combinations</div>
+            <p>Every consonant is paired with every other consonant with a pulli (<code>்</code>) in the middle:</p>
+            <code>first_consonant + ் + second_consonant</code><br>
+            <code>23 × 23 = 529 combinations</code>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Deduplication: 529 - 1 = 528</div>
+            <p>The ligature <code>க்ஷ</code> (<code>க + ் + ஷ</code>) was already inserted earlier as a common compound character.</p>
+            <p>Because the code deduplicates via a hash set, <code>529 - 1 = 528</code> new unique tokens are added.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Why Vowel Signs Were Excluded</h2>
+      <p>What if we also attached the 12 vowel signs (<code>ா, ி, ீ, ு...</code>) to every conjunct stem?</p>
+
+      <div class="diagram-card">
+        <p><strong>The Math of Vocabulary Bloat:</strong></p>
+        <ul>
+          <li>Bare stems: <code>23 × 23 = 528</code> tokens. Base vocabulary: <strong>1,135 tokens</strong>.</li>
+          <li>Stems + vowel signs: <code>23 × 23 × 12 = 6,348</code> tokens. Base vocabulary: <strong>~7,483 tokens</strong>.</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">The Real-World Benchmark Experiment</div>
+        <p>In <a href="../vocab.rs#L150-L163"><code>vocab.rs:150-163</code></a>, the author tested adding all 6,348 combinations.</p>
+        <p>The result was worse compression (bytes per token rose from 10.15 to 10.85).</p>
+        <p>Why? Most of those 6,348 combinations never appear in real life (for example, <code>ழ் + ் + ங + ௌ</code>). On a fixed 30,000 token budget, wasting 6,348 slots on impossible combinations steals room needed for common words like <em>சென்னை</em>, <em>அரசு</em>, or <em>மக்கள்</em>.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. How Words with Vowel Signs Actually Get Handled</h2>
+      <p>Take the word <strong>வண்டி</strong> (vandi = cart/vehicle):</p>
+      <ol>
+        <li>Initial base tokens: <code>வ</code> (consonant) + <code>ண்ட</code> (bare conjunct stem) + <code>ி</code> (vowel sign).</li>
+        <li>During BPE training, the pair <code>(ண்ட, ி)</code> appears thousands of times in the training corpus.</li>
+        <li>BPE naturally learns to merge them into <code>ண்டி</code> (Token <code>1329</code> in <code>tamil_32k.json</code>).</li>
+      </ol>
+      <p>Result: Frequent clusters get merged by data evidence, while impossible combinations never waste a single token ID.</p>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">Why does vocab.rs skip adding vowel signs to conjunct stems in the base vocabulary?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">It creates 6,348 unused tokens.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It breaks the Rust compiler type.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Vowels cannot be stored in UTF-8.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Tamil has no vowel combinations.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0002-tamil-orthography-and-conjunct-stems.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 2: Tamil orthography and conjunct stems</span>
+      </a>
+      <a href="../lessons/0004-pretokenization-and-the-unicode-regex.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 4: Pretokenization and the Unicode regex</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 3 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> Adding 6,348 combinations wastes vocabulary slots on combinations that rarely occur in real text.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> 23 × 23 × 12 = 6,348 tokens would bloat the vocabulary with clusters that almost never occur.';
+      }
+    }
+  </script>
+</body>
+</html>

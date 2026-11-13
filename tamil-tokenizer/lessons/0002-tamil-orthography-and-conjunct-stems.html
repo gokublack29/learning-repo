@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 2: Tamil Orthography and Conjunct Stems</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0002</div>
+      <h1>Tamil Orthography and Conjunct Stems</h1>
+      <p class="lead">Why Tamil letters combine like Lego bricks, and why this tokenizer pre-builds 528 combinations before training starts.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 2 of 13.</strong> <span class="dim">Orientation. Why Tamil needs its own tokenizer at all.</span>
+    </div>
+
+    <section>
+      <h2>1. English Alphabet vs. Tamil Abugida</h2>
+      <p>In English, letters sit in a simple row: <code>c</code> + <code>a</code> + <code>t</code> = <code>cat</code>. Each character stands alone.</p>
+      <p>Tamil is an <strong>abugida</strong> (syllabic alphabet). Letters combine visually and phonetically into composite units. To understand this repo, you only need four building blocks:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Independent Vowels (12 letters)</div>
+            <p>Standalone vowel sounds used only when a word begins with a vowel.</p>
+            <code>அ (a), ஆ (aa), இ (i), ஈ (ee), உ (u), ஊ (oo)...</code>
+            <p style="margin-top:0.35rem; font-size:0.9rem; color:var(--text-muted);">Example: The word <em>அம்மா</em> (Amma) begins with the independent vowel <code>அ</code>.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Consonants and the Pulli (Dot)</div>
+            <p>Every Tamil consonant naturally carries a built-in short "a" sound: <code>க</code> is pronounced "ka", <code>ப</code> is "pa".</p>
+            <p>To make a pure consonant without a vowel, Tamil adds a dot called a <strong>pulli</strong> (virama) on top:</p>
+            <code>க (ka) + ் (pulli) = க் ("k" sound)</code><br>
+            <code>ப (pa) + ் (pulli) = ப் ("p" sound)</code>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Vowel Signs (12 signs)</div>
+            <p>When a vowel sound follows a consonant inside a word, you do not write the independent vowel. You attach a <strong>vowel sign</strong> (maatra) to the consonant.</p>
+            <code>க (ka) + ா (aa sign) = கா ("kaa")</code><br>
+            <code>க (ka) + ி (i sign)  = கி ("ki")</code><br>
+            <code>க (ka) + ு (u sign)  = கு ("ku")</code>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">4</div>
+          <div class="step-body">
+            <div class="step-title">Two-Consonant Conjunct Stems (<code>C1 + ் + C2</code>)</div>
+            <p>In Tamil, consonants frequently cluster together with a pulli in the middle. This cluster is a <strong>conjunct stem</strong>:</p>
+            <code>ண (na) + ் + ட (da) = ண்ட (as in வண்டு / insect)</code><br>
+            <code>த (ta) + ் + த (ta) = த்த (as in புத்தகம் / book)</code><br>
+            <code>க (ka) + ் + க (ka) = க்க (as in அக்கா / sister)</code><br>
+            <code>ந (na) + ் + த (ta) = ந்த (as in சந்தை / market)</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Why This Matters for Tokenization and Rust</h2>
+      <p>Computers store text as UTF-8 bytes. Look at what happens under the hood for <code>ண்ட</code>:</p>
+
+      <div class="diagram-card">
+        <p><strong>The Unicode byte reality:</strong></p>
+        <ul>
+          <li><code>ண</code> = 3 bytes (<code>0xE0 0xBA 0xA3</code>)</li>
+          <li><code>்</code> = 3 bytes (<code>0xE0 0xAE 0x8D</code>)</li>
+          <li><code>ட</code> = 3 bytes (<code>0xE0 0xAE 0x9F</code>)</li>
+        </ul>
+        <p>The cluster <code>ண்ட</code> takes <strong>9 raw bytes</strong> across 3 Unicode characters!</p>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">The Tokenizer Dilemma</div>
+        <p>A standard naive tokenizer starts with single bytes or single characters. It would chop <code>ண்ட</code> into 3 or 4 separate tokens.</p>
+        <p>A single short sentence would burn through 40 to 60 tokens, making language models slow and expensive.</p>
+        <p>In <a href="../vocab.rs#L164-L175"><code>vocab.rs</code></a>, this repository pre-generates all <strong>528 conjunct stems</strong> (23 consonants × 23 consonants) right into the base vocabulary before BPE training starts.</p>
+        <p>Result: <code>ண்ட</code> is recognized as <strong>one single token</strong> immediately, cutting token counts across Tamil corpora without wasting the BPE merge budget.</p>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">In Tamil orthography, what does adding a pulli (dot) above a consonant do?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Adds a long aa vowel sign to it.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">Strips out the built-in a vowel.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Doubles the length of the sound.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Turns it into an English letter.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Primary Source</h2>
+      <p>Read the official Unicode Consortium documentation on South Asian Indic scripts: <br>
+      <a href="https://www.unicode.org/versions/Unicode15.0.0/ch12.pdf" target="_blank" rel="noopener">The Unicode Standard: South and Central Asian Scripts (Tamil Section 12.6)</a>.</p>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0001-entry-points-and-data-flow.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 1: Entry points and data flow</span>
+      </a>
+      <a href="../lessons/0003-conjunct-stems-math-and-vocabulary-bloat.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 3: Conjunct stems math and vocabulary bloat</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 2 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> The pulli removes the default "a" sound, turning "ka" (க) into pure "k" (க்).';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> The pulli removes the inherent "a" sound, transforming "ka" (க) into pure silent "k" (க்).';
+      }
+    }
+  </script>
+</body>
+</html>

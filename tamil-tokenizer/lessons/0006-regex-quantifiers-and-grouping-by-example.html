@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 6: Regex Quantifiers and Grouping by Example</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0006</div>
+      <h1>Regex Quantifiers and Grouping by Example</h1>
+      <p class="lead">Concrete examples showing what "+", "(?: ... )", and "\p{M}*" do, and what breaks without them.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 6 of 13.</strong> <span class="dim">The pipeline. Quantifiers, groups, and the missing pipe that broke it.</span>
+    </div>
+
+    <section>
+      <h2>1. The Plus Symbol: <code>+</code> (The Glue)</h2>
+      <p>Without <code>+</code>, a regex matches only <strong>one</strong> character and stops.</p>
+
+      <div class="diagram-card">
+        <p><strong>Example: Matching digits in <code>"12345"</code></strong></p>
+        <ul>
+          <li>Pattern <code>\p{N}</code> (no plus): Matches <code>"1"</code>, then <code>"2"</code>, then <code>"3"</code>... producing <strong>five separate chunks</strong>.</li>
+          <li>Pattern <code>\p{N}+</code> (with plus): Matches <code>"12345"</code> as <strong>one single chunk</strong>.</li>
+        </ul>
+        <p>The plus means: <em>"Must appear at least once, and keep eating matching characters until a non-matching character appears."</em></p>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. The Shipping Box: <code>(?: ... )</code> (Grouping)</h2>
+      <p>In math, parentheses change what a multiplier applies to: <code>3 × a + b</code> is not the same as <code>3 × (a + b)</code>.</p>
+      <p>Regex works the same way:</p>
+
+      <div class="diagram-card">
+        <p><strong>Example: Trying to match <code>"hahaha"</code></strong></p>
+        <ul>
+          <li>If you write <code>ha+</code>: The <code>+</code> only applies to the letter right before it (<code>a</code>).
+            <br>Result: Matches <code>"h"</code> followed by many "a"s (<code>"haaaaa"</code>). It will <strong>not</strong> match <code>"hahaha"</code>.</li>
+          <li>If you put them in a box: <code>(?:ha)+</code>: The <code>+</code> now applies to the entire pair <code>"ha"</code>.
+            <br>Result: Matches <code>"haha"</code>, <code>"hahaha"</code>, <code>"hahahaha"</code>.</li>
+        </ul>
+      </div>
+
+      <div class="callout">
+        <div class="callout-title">Why the <code>?:</code> inside <code>(?: ... )</code>?</div>
+        <p>In standard regex, plain parentheses <code>(...)</code> tell the computer to save whatever matched into a numbered variable for later use. This is called a "capturing group" and burns extra CPU time and memory.</p>
+        <p>Adding <code>?:</code> tells the regex engine: <em>"This is just a grouping box to apply the <code>+</code> operator. Do not waste CPU cycles saving capture variables."</em></p>
+      </div>
+    </section>
+
+    <section>
+      <h2>3. The Backpack: <code>\p{M}*</code> (Optional Marks)</h2>
+      <p>Remember: <code>\p{M}</code> is a Mark (pulli dot <code>்</code> or vowel sign <code>ா, ி, ீ...</code>).</p>
+      <p>What does the asterisk <code>*</code> mean? It means <strong>zero, one, or more</strong>.</p>
+
+      <div class="diagram-card">
+        <p>Look at three real Tamil consonants in text:</p>
+        <ol>
+          <li><code>க</code> (ka) -> 1 base consonant, <strong>0 marks</strong>.</li>
+          <li><code>கா</code> (kaa) -> 1 base consonant, <strong>1 vowel mark</strong> (<code>ா</code>).</li>
+          <li><code>க்</code> (k) -> 1 base consonant, <strong>1 pulli mark</strong> (<code>்</code>).</li>
+        </ol>
+
+        <p style="margin-top:1rem;"><strong>Why can't we use <code>+</code> instead of <code>*</code>?</strong></p>
+        <ul>
+          <li>If we wrote <code>\p{M}+</code>: The mark would be <strong>mandatory</strong>.
+            <br><code>கா</code> and <code>க்</code> would match, but plain <code>க</code> would <strong>fail</strong> because it has 0 marks!</li>
+          <li>If we left out <code>\p{M}</code> entirely:
+            <br>The regex would match <code>க</code>, but would leave the vowel sign <code>ா</code> or pulli <code>்</code> behind as an orphaned character.</li>
+          <li>With <code>\p{M}*</code>:
+            <br>If a mark exists (<code>கா</code>, <code>க்</code>), it is scooped up. If no mark exists (<code>க</code>), it still matches cleanly.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Putting All Three Together</h2>
+      <p>Now look at the combined Tamil pattern:</p>
+      <pre><code>(?: [\p{Lt}\p{Lm}\p{Lo}] \p{M}* )+</code></pre>
+
+      <div class="diagram-card">
+        <ol>
+          <li><code>[\p{Lt}\p{Lm}\p{Lo}] \p{M}*</code> = <strong>One syllable</strong> (one Tamil base letter + its optional mark backpack).</li>
+          <li><code>(?: ... )</code> = <strong>The box</strong> holding the syllable definition together.</li>
+          <li><code>+</code> = <strong>Repeat</strong> for 1 or more syllables to scoop up the entire word!</li>
+        </ol>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">What would happen to the plain consonant "க" if the pattern used \p{M}+ instead of \p{M}*?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">It fails to match because it has 0 marks.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It automatically converts into English text.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It matches twice as fast inside the computer.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">It adds an extra vowel sign automatically.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0005-regex-and-unicode-properties-from-scratch.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 5: Regex and Unicode properties from scratch</span>
+      </a>
+      <a href="../lessons/0007-bpe-training-engine-and-pair-packing.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 7: The BPE training engine and pair packing</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 6 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> The plus quantifier (+) requires at least one mark. Plain "க" has 0 marks, so it would fail.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> The plus (+) requires 1 or more marks. Because plain "க" has 0 marks, it would fail to match.';
+      }
+    }
+  </script>
+</body>
+</html>

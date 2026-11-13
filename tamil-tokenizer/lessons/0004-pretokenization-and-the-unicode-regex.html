@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lesson 4: Pretokenization and the Unicode Regex</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+    <div class="topnav">
+      <div class="topnav-inner">
+        <a class="topnav-brand" href="../index.html">Tamil Tokenizer</a>
+        <a href="../index.html#path">Path</a>
+        <a href="../reference/architecture-cheat-sheet.html">Cheat sheet</a>
+        <a href="../interview/dossier.html">Dossier</a>
+        <a href="../docs/USAGE.md">Usage</a>
+      </div>
+    </div>
+  <div class="container">
+    <header>
+      <div class="lesson-badge">Lesson 0004</div>
+      <h1>Pretokenization and the Unicode Regex</h1>
+      <p class="lead">Why BPE needs boundary walls, and how pretokenizer.rs uses Unicode categories to keep Tamil words intact.</p>
+    </header>
+
+    <div class="pathbar">
+      <strong>Step 4 of 13.</strong> <span class="dim">The pipeline. Why merges must not cross word boundaries.</span>
+    </div>
+
+    <section>
+      <h2>1. The Problem: What Happens Without Boundary Walls?</h2>
+      <p>BPE is a greedy algorithm. It counts adjacent character pairs anywhere in the text. If you ran raw BPE directly on full sentences without pretokenization, three major problems would happen:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <div class="step-title">Words Merge Across Spaces</div>
+            <p>Common word pairs would get glued together: <code>"வணக்கம் உலகம்"</code> would merge into a single gigantic token. The vocabulary would quickly fill with pairs of words instead of reusable words.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <div class="step-title">Punctuation Glues to Words</div>
+            <p><code>"தமிழ்"</code>, <code>"தமிழ்,"</code>, <code>"தமிழ்!"</code>, and <code>"தமிழ்?"</code> would become four completely distinct token IDs. A word followed by a comma would not share embeddings with the same word followed by a period.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <div class="step-title">Special Control Tokens Get Shredded</div>
+            <p>Control tokens like <code>&lt;|startoftext|&gt;</code> or <code>&lt;|endoftext|&gt;</code> would get cut into regular characters (<code>&lt;</code>, <code>|</code>, <code>start</code>), breaking the language model's control signals.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>2. The Solution: Pretokenization Sets Boundary Walls</h2>
+      <p>Before BPE merges anything, <a href="../pretokenizer.rs"><code>pretokenizer.rs</code></a> slices the text into isolated chunks.</p>
+      
+      <div class="callout">
+        <div class="callout-title">The Golden Rule of Pretokenization</div>
+        <p><strong>BPE merges can never cross chunk boundaries.</strong> Each chunk is tokenized strictly on its own.</p>
+      </div>
+
+      <p>For example, the sentence <code>"வணக்கம், உலகம்! 123"</code> is split into:</p>
+      <pre><code>["வணக்கம்", ",", " உலகம்", "!", " 123"]</code></pre>
+      <p>Because <code>","</code> and <code>"!"</code> are their own chunks, punctuation can never merge into Tamil words.</p>
+    </section>
+
+    <section>
+      <h2>3. Inside pretokenizer.rs: The Unicode Regex</h2>
+      <p>Open <a href="../pretokenizer.rs#L19-L31"><code>pretokenizer.rs:19-31</code></a> to inspect the 11 regex patterns:</p>
+
+      <div class="diagram-card">
+        <div class="flow-step">
+          <div class="step-num">A</div>
+          <div class="step-body">
+            <div class="step-title">Special Tokens First: <code>&lt;\|[a-z_]+\|&gt;</code></div>
+            <p>Matches tokens like <code>&lt;|startoftext|&gt;</code> first, preventing any later rule from touching them.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">B</div>
+          <div class="step-body">
+            <div class="step-title">The Tamil Word Rule: <code> ?(?:[\p{Lt}\p{Lm}\p{Lo}]\p{M}*)+</code></div>
+            <p>This is the core rule for Tamil text. Three key pieces:</p>
+            <ul>
+              <li><code> ?</code>: Matches an optional leading space, binding the space to the start of the word.</li>
+              <li><code>\p{Lo}</code>: Unicode category "Letter, other". Tamil letters have no upper/lower case, so they belong to <code>\p{Lo}</code>.</li>
+              <li><code>\p{M}*</code>: Zero or more combining marks! This keeps the <strong>pulli</strong> (<code>்</code>) and <strong>vowel signs</strong> (<code>ா, ி, ீ...</code>) glued to their consonant. Without <code>\p{M}*</code>, <code>கா</code> would be sliced into <code>க</code> and a detached <code>ா</code>.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">C</div>
+          <div class="step-body">
+            <div class="step-title">Numbers: <code>(?:\p{N}\p{M}*)+</code></div>
+            <p>Groups sequences of digits into independent number chunks.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="step-num">D</div>
+          <div class="step-body">
+            <div class="step-title">Punctuation: <code> ?(?:[\p{P}\p{S}]\p{M}*)+</code></div>
+            <p>Isolates commas, periods, quotes, and mathematical symbols.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>4. Check Your Understanding</h2>
+      <div class="quiz-box">
+        <div class="quiz-question">In the pretokenizer regex, what is the purpose of \p{M}* in the Tamil rule?</div>
+        <button class="quiz-option" onclick="checkAnswer(this, true)">Keeps pulli and vowel signs attached.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Removes all punctuation from sentences.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Converts all Tamil letters to English.</button>
+        <button class="quiz-option" onclick="checkAnswer(this, false)">Separates every consonant into two bytes.</button>
+        <div id="quiz-feedback" class="feedback"></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>5. Primary Source</h2>
+      <p>Read the Hugging Face Tokenizers guide on pretokenization: <br>
+      <a href="https://huggingface.co/docs/tokenizers/pipeline#pre-tokenization" target="_blank" rel="noopener">Hugging Face: Pre-tokenization Pipeline</a>.</p>
+    </section>
+
+    <div class="pagenav">
+      <a href="../lessons/0003-conjunct-stems-math-and-vocabulary-bloat.html">
+        <span class="dir">Previous</span>
+        <span class="label">Lesson 3: Conjunct stems math and vocabulary bloat</span>
+      </a>
+      <a href="../lessons/0005-regex-and-unicode-properties-from-scratch.html">
+        <span class="dir">Next</span>
+        <span class="label">Lesson 5: Regex and Unicode properties from scratch</span>
+      </a>
+      <a href="../index.html#path">
+        <span class="dir">Back to</span>
+        <span class="label">The learning path</span>
+      </a>
+    </div>
+
+    <footer>
+      <p>Lesson 4 of 13 on the Tamil Tokenizer learning path. Source files: <a href="../lib.rs">lib.rs</a>, <a href="../vocab.rs">vocab.rs</a>, <a href="../pretokenizer.rs">pretokenizer.rs</a>, <a href="../trainer.rs">trainer.rs</a>, <a href="../model.rs">model.rs</a>, <a href="../encoder.rs">encoder.rs</a>.</p>
+    </footer>
+  </div>
+
+  <script>
+    function checkAnswer(btn, isCorrect) {
+      const options = document.querySelectorAll('.quiz-option');
+      options.forEach(b => {
+        b.disabled = true;
+        b.classList.remove('correct', 'wrong');
+      });
+      const feedback = document.getElementById('quiz-feedback');
+      feedback.style.display = 'block';
+      if (isCorrect) {
+        btn.classList.add('correct');
+        feedback.innerHTML = '<span style="color:var(--success); font-weight:600;">Correct!</span> <code>\\p{M}*</code> matches combining marks (pulli and vowel signs) so they stay joined with their preceding consonants.';
+      } else {
+        btn.classList.add('wrong');
+        feedback.innerHTML = '<span style="color:var(--warn); font-weight:600;">Not quite.</span> In Unicode, <code>\\p{M}</code> is the Mark category (pulli dot and vowel signs). <code>\\p{M}*</code> keeps them glued to their consonants.';
+      }
+    }
+  </script>
+</body>
+</html>
