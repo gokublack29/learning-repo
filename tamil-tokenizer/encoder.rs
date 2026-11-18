@@ -38,16 +38,8 @@ struct Symbol {
 
 /// Merge rules in CSR layout, keyed by the first token of the pair.
 ///
-/// A hash map was the obvious choice, and it is what this used to be. At a
-/// 120K-merge vocab it cost 2.4x throughput (17.4 -> 7.3 MB/s) while the
-/// automaton over the same 122K patterns cost only 17%: the table stops
-/// fitting in cache and every probe misses.
-///
-/// A BPE merge table is almost all empty though. Each token is the *result* of
-/// at most one merge, so the pairs starting with a given id are few and
-/// contiguous when sorted. Indexing by `a` and binary-searching a short slice
-/// replaces the random probe with one sequential read plus a couple of
-/// comparisons.
+/// Pairs starting with token `a` are sparse and contiguous when sorted.
+/// Indexing by `a` and scanning a short slice avoids cache misses at scale.
 /// Pack the second token, the rank and the merged token ID into one word.
 #[inline]
 fn pack(b: u32, rank: u32, new_id: u32) -> u64 {
@@ -73,9 +65,9 @@ struct MergeTable {
     /// `offsets[a]..offsets[a + 1]` is the slice of `data` for first token `a`.
     offsets: Vec<u32>,
     /// Sorted by `b` within each slice. Each entry packs the second token,
-    /// the rank and the merged token ID into one word: 21 bits each, so 63
-    /// of the 64 bits are used. The table is read once per adjacent pair per
-    /// merge, so halving its size halves the cache misses.
+    /// the rank and the merged token ID into one word: 17 bits each, which
+    /// fits in 64. The table is read once per adjacent pair per merge, so
+    /// halving its size halves the cache misses.
     data: Vec<u64>,
     /// One bit per token ID, set when that ID starts at least one merge.
     /// Most adjacent pairs in a chunk have no rule at all, and this answers
@@ -106,7 +98,7 @@ impl MergeTable {
             offsets[i + 1] += offsets[i];
         }
 
-        let mut starts = vec![0u64; (vocab_size + 63) / 64];
+        let mut starts = vec![0u64; vocab_size.div_ceil(64)];
         for &(a, ..) in &pairs {
             starts[(a / 64) as usize] |= 1u64 << (a % 64);
         }
@@ -328,7 +320,6 @@ impl FastBPEEncoder {
         let (promotion_merges, learned_merges) = canonical.merges.split_at(canonical.promotions);
         let promotion_table = MergeTable::build(promotion_merges, &vocab, vocab_size);
         let merge_table = MergeTable::build(learned_merges, &vocab, vocab_size);
-
 
         Ok(Self {
             token_to_id: Arc::new(vocab),

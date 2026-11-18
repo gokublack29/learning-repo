@@ -7,7 +7,7 @@ use tamil_tokenizer::TamilTokenizer;
 
 fn main() {
     let tok = TamilTokenizer::new();
-    tok.print_stats();
+    // tok.print_stats();
 
     // The buckets printed above are hand-maintained and have drifted from the
     // builder before. This asserts the one invariant that matters: they add up.

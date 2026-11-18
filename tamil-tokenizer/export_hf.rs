@@ -1,65 +1,22 @@
+use tamil_tokenizer::{TamilPretokenizer, TokenizerResult as Result};
 use serde_json::{json, Map, Value};
 use std::io::Write;
-use tamil_tokenizer::{TamilPretokenizer, TokenizerResult as Result};
 
-/// Write Hugging Face artifacts for a trained tokenizer.
+/// Export a trained tokenizer to Hugging Face format artifacts.
 ///
-/// Two things about our model have no direct HF equivalent, and both are fixed
-/// here rather than left to silently produce different IDs in Python:
-///
-/// 1. Our pretokenizer is a Tamil-aware regex, not GPT-2's. HF's `ByteLevel`
-///    pretokenizer hardcodes the GPT-2 pattern, and that pattern byte-maps the
-///    text before BPE sees it, which no merge in our file can ever match. So the
-///    export uses `Split` with our own regex, which keeps raw text intact.
-/// 2. Our trainer treats consonant clusters (`கே`, `ங்`) as atomic base
-///    symbols. HF BPE has no base-symbol set: it starts from single characters
-///    and can only reach a token through merges. So the export adds promotion
-///    merges that build each such token from its characters, and appends any
-///    character the vocab lacks so HF can represent the input at all.
-///
-/// ID parity with our encoder is 100%. Both engines read the same canonical
-/// model from `model.rs`: one vocabulary, one merge list, promotion merges
-/// ahead of the learned ones. The encoder seeds a chunk with single characters
-/// and merges every occurrence of the best-ranked pair per pass, which is
-/// what HF's `BPE` model does, so the two segment a chunk the same way.
-/// All 120,000 learned merges survive the export (verified), so nothing is
-/// lost in the merge list itself.
-///
-/// Registering the base clusters as `added_tokens` does not help. HF extracts
-/// added tokens before the BPE model runs, so the model never fires and output
-/// collapses to characters (measured: 0% agreement).
-///
-/// Round-trip fidelity is 100% and is the property to hold this file to. See
-/// `scripts/verify_hf_export.py`, which reports fidelity and ID agreement
-/// separately.
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    if args.len() < 3 {
-        eprintln!(
-            "Usage: {} <tokenizer.json> <out_dir> [model_max_length]",
-            args[0]
-        );
-        std::process::exit(1);
-    }
-
-    let max_len = args.get(3).and_then(|s| s.parse().ok());
-    if let Err(e) = export(&args[1], &args[2], max_len) {
-        eprintln!("Export failed: {}", e);
-        std::process::exit(1);
-    }
-}
-
-fn export(src: &str, out_dir: &str, model_max_length: Option<usize>) -> Result<()> {
+/// Produces:
+/// - `tokenizer.json`: Hugging Face fast tokenizer layout with Regex Split pretokenizer and ByteFallback decoder.
+/// - `tokenizer_config.json`: Special tokens and model max length metadata.
+/// - `special_tokens_map.json`: Explicit mappings for BOS, EOS, UNK, PAD.
+/// - `vocab.json`: Canonical token-to-id mapping.
+/// - `merges.txt`: Ranked merge list.
+pub fn export_hf(src: &str, out_dir: &str, model_max_length: Option<usize>) -> Result<()> {
     let (trained_vocab, merges) = tamil_tokenizer::load_tokenizer(src)?;
 
-    // The canonical model is the vocabulary and merge list both engines read.
-    // The Rust encoder builds the same thing from the same artifact, so the
-    // two agree on every token ID.
     let canonical = tamil_tokenizer::canonical_model(&trained_vocab, &merges);
     let vocab = canonical.vocab;
     let all_merges = canonical.merges;
-    let trained_vocab = trained_vocab.len();
-
+    let trained_vocab_len = trained_vocab.len();
 
     let specials: Vec<(String, u32)> = {
         let mut v: Vec<(String, u32)> = vocab
@@ -99,13 +56,6 @@ fn export(src: &str, out_dir: &str, model_max_length: Option<usize>) -> Result<(
     let pretok = TamilPretokenizer::new();
     let pattern = pretok.pattern().to_string();
 
-    // ByteFallback alone, and `ByteLevel` must NOT follow it.
-    //
-    // ByteFallback assembles `<0xNN>` back into bytes and returns them as a
-    // UTF-8 string. ByteLevel then re-applies the GPT-2 table to whatever came
-    // out, so a decoded `é` (U+00E9, itself a GPT-2 stand-in for byte 0xE9) is
-    // turned back into the raw byte 0xE9 and decodes to U+FFFD. Measured on
-    // v3_wiki_30000: `café ñ ÿ` came back as `caf<?><?> <?><?>`.
     let decoders = vec![json!({ "type": "ByteFallback" })];
 
     let hf = json!({
@@ -168,13 +118,6 @@ fn export(src: &str, out_dir: &str, model_max_length: Option<usize>) -> Result<(
         ),
     )?;
 
-    // model_max_length goes in tokenizer_config.json. HF's tokenizer.json
-    // schema rejects the field, so writing it there makes the file unloadable.
-    //
-    // transformers reads model_max_length as the truncation cap, so
-    // `tok(text, truncation=True)` cuts the input at it. The default is the
-    // largest u64, which transformers treats as unlimited, since a base
-    // tokenizer has no length to impose. Pass an explicit value to set a cap.
     const UNLIMITED: u64 = u64::MAX;
     let mut config = Map::new();
     config.insert("tokenizer_class".into(), json!("PreTrainedTokenizerFast"));
@@ -184,21 +127,14 @@ fn export(src: &str, out_dir: &str, model_max_length: Option<usize>) -> Result<(
     );
     config.insert("unk_token".into(), json!("<|unk|>"));
     config.insert("bos_token".into(), json!("<|startoftext|>"));
-    // An empty string here resolves to no token, so `tok.eos_token` comes
-    // back None even though <|endoftext|> is in the vocab.
     config.insert("eos_token".into(), json!("<|endoftext|>"));
     config.insert("pad_token".into(), json!("<|pad|>"));
-    // The decoder is ByteFallback, so there is no GPT-2 whitespace cleanup to
-    // undo. Leaving this on lets transformers rewrite the decoded string.
     config.insert("clean_up_tokenization_spaces".into(), json!(false));
     write_file(
         &format!("{out_dir}/tokenizer_config.json"),
         &serde_json::to_string_pretty(&Value::Object(config))?,
     )?;
 
-    // transformers reads bos/eos/pad/unk from special_tokens_map.json when it
-    // exists and falls back to tokenizer_config.json otherwise. Writing both
-    // keeps the two in sync.
     write_file(
         &format!("{out_dir}/special_tokens_map.json"),
         &serde_json::to_string_pretty(&json!({
@@ -211,22 +147,12 @@ fn export(src: &str, out_dir: &str, model_max_length: Option<usize>) -> Result<(
 
     println!(
         "Exported {} vocab, {} merges ({} promotions) to {}",
-        trained_vocab + canonical.added_prims + 256,
+        trained_vocab_len + canonical.added_prims + 256,
         all_merges.len(),
         canonical.promotions,
         out_dir
     );
-    if canonical.added_prims > 0 {
-        println!(
-            "  {} characters appended to the vocab as primitives",
-            canonical.added_prims
-        );
-    }
-    println!("  tokenizer.json        (HF tokenizers, Split + BPE)");
-    println!("  tokenizer_config.json (model_max_length, special tokens)");
-    println!("  special_tokens_map.json (bos/eos/pad/unk)");
-    println!("  vocab.json            (slow-tokenizer vocab)");
-    println!("  merges.txt            (slow-tokenizer merges, rank order)");
+
     Ok(())
 }
 
